@@ -1,0 +1,216 @@
+<apex:page showHeader="false" sidebar="false" standardController="CfiProductionHistory__c">
+    <apex:stylesheet value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'jquery.mobile-1.3.0.min.css')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'jquery-1.9.1.min.js')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'jquery.mobile-1.3.0.min.js')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'ForceTk.js')}"/>
+    <head>
+        <title>产品</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    </head>
+    <script type="text/javascript">
+        var $j = jQuery.noConflict();
+        var productRecs = new Array();
+        var restAPIClient = new forcetk.Client();
+        restAPIClient.setSessionToken('{!$Api.Session_ID}');
+        
+        $j(document).ready(function() {
+            regBtnClickHandlers();
+            getAllProducts();
+        });
+        
+        function getAllProducts(){
+            $j.mobile.showPageLoadingMsg();
+            var q = "select id, Name, productionSpec__c, productionModel__c, productionYear__c, productionOutput__c, productionOutputUom__c, productionUsagePurpose__c from CfiProductionHistory__c order by id desc";
+            restAPIClient.query(q , 
+                        function(response) { 
+                               showCfiProducts(response.records); 
+                            }); 
+        }
+        
+        function showCfiProducts(records) {    
+                $j('#cList').empty();
+                productRecs.length = 0;
+                for(var i = 0; i < records.length; i++) { productRecs[records[i].Id] = records[i]; }
+                var x = 0;
+                $j.each(records,
+                    function() {
+                    var newLi = $j('<li></li>');
+                    var newLink = $j('<a id="' +this.Id+ '" data-transition="flip">' +this.Name+ '</a>');
+                    newLink.click(function(e) {
+                        e.preventDefault();
+                        $j.mobile.showPageLoadingMsg();
+                        $j('#Name').val(productRecs[this.id].Name);
+                        $j('#productionYear').val(productRecs[this.id].productionYear__c);
+                        $j('#productionOutput').val(productRecs[this.id].productionOutput__c);
+                        $j('#productionOutputUom').val(productRecs[this.id].productionOutputUom__c);
+                        $j('#productionSpec').val(productRecs[this.id].productionSpec__c);
+                        $j('#productionModel').val(productRecs[this.id].productionModel__c);
+                        $j('#productionUsagePurpose').val(productRecs[this.id].productionUsagePurpose__c);
+                        $j('#memo').val(productRecs[this.id].memo__c);
+                        $j('#productionHistoryId').val(productRecs[this.id].Id);
+                        $j('#error').html('');
+                        $j.mobile.changePage('#cList', {changeHash: true});
+                    });
+                    newLi.append(newLink);            
+                    newLi.appendTo('#cList');
+                    x++;
+                  });
+                
+                $j.mobile.hidePageLoadingMsg();
+                $j('#cList').listview('refresh');
+            }      
+        
+        function regBtnClickHandlers() {
+                $j('#add').click(function(e) {
+                    e.preventDefault();
+                    $j.mobile.showPageLoadingMsg();
+                    $j('#Name').val('');
+                    $j('#productionYear').val('');
+                    $j('#productionOutput').val('');
+                    $j('#productionOutputUom').val('');
+                    $j('#productionSpec').val('');
+                    $j('#productionModel').val('');
+                    $j('#productionUsagePurpose').val('');
+                    $j('#memo').val('');
+                    $j('#productionHistoryId').val('');
+                    $j.mobile.changePage('#cfiProductPage', {changeHash: true});
+                    $j.mobile.hidePageLoadingMsg();            
+                });
+        
+                $j('#save').click(function(e) {
+                   addUpdateProduct(e);
+                });
+        
+                $j('#delete').click(function(e) {
+                   deleteProduct(e);
+                });
+            }
+            
+            function addUpdateProduct(e){
+                e.preventDefault();
+                var productionHistoryId = $j('#productionHistoryId').val();
+                var cfiProduct = { partyId__c : getGlobalAccountId, Name : $j('#Name').val(), productionYear__c : $j('#productionYear').val(), productionOutput__c : $j('#productionOutput').val(),
+                                productionOutputUom__c : $j('#productionOutputUom').val(), productionSpec__c : $j('#productionSpec').val(), productionModel__c : $j('#productionModel').val(),
+                                productionUsagePurpose__c: $j('#productionUsagePurpose').val(), memo__c : $j('#memo').val()};
+                if (productionHistoryId === 'undefined' || productionHistoryId === ''){
+                    restAPIClient.create('CfiProductionHistory__c', cfiProduct, sucessCallback, displayError); 
+                } else {
+                    restAPIClient.update('CfiProductionHistory__c', productionHistoryId, cfiProduct, sucessCallback, displayError); 
+                }
+            }
+        
+            function deleteProduct(e){
+                e.preventDefault();
+                restAPIClient.del('CfiProductionHistory__c', $j('#productionHistoryId').val(), sucessCallback, displayError);
+            }
+            
+            function sucessCallback(e){
+                getAllContacts();
+                $j.mobile.changePage('#cfiProductListPage', {changeHash: true});
+            }
+        
+            function displayError(e){
+                var error = JSON.parse(e.responseText);
+                $j('#error').html(error[0].message);
+            }
+    </script>
+    <body>
+        <div data-role="page" data-theme="b" id="cfiProductListPage">                
+            <div data-role="header" data-position="fixed">
+                <h2>产品列表</h2>
+                <a data-role="button" href="cfi" class="ui-btn-left">返回</a>
+                <a href='#' id="add" class='ui-btn-right' data-icon='add' data-theme="b">Add</a>
+            </div>
+            <div data-role="content" id="productList">            
+                <ul id="cList" data-filter="true" data-inset="true" data-role="listview" 
+                    data-theme="c" data-dividertheme="b">
+                </ul>
+            </div>
+        </div>
+        
+        <div data-role="page" id="cfiProductPage">
+            <div data-theme="a" data-role="header">
+                <a data-role="button" href="#cfiProductListPage" class="ui-btn-left">返回</a>
+                <h3>产品</h3>
+            </div>
+            <div data-role="content" >
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px;">
+                        <label for="Name">产品名称</label>
+                    </div>
+                    <div class="ui-block-b" style="width:70%">
+                        <input data-mini="true" name="Name" id="Name" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color:#ffffff"/>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px;">
+                        <label for="productionSpec">规格</label>
+                    </div>
+                    <div class="ui-block-b" style="width:70%">
+                        <input data-mini="true" name="productionSpec" id="productionSpec" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color:#ffffff"/>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px;">
+                        <label for="productionModel">型号</label>
+                    </div>
+                    <div class="ui-block-b" style="width:70%">
+                        <input data-mini="true" name="productionModel" id="productionModel" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color:#ffffff"/>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px;">
+                        <label for="productionYear">年份</label>
+                    </div>
+                    <div class="ui-block-b" style="width:70%">
+                        <input data-clear-btn="false" name="productionYear" id="productionYear" pattern="19[\d][\d]|20[\d][\d]" value="" type="number" />
+                    </div>
+                </div>
+                <hr style="color:#ffffff"/>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px;">
+                        <label for="productionOutput">产量</label>
+                    </div>
+                    <div class="ui-block-b" style="width:70%">
+                        <input data-mini="true" name="productionOutput" id="productionOutput" pattern="[0-9]+\.?[0-9]*" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color:#ffffff"/>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px;">
+                        <label for="productionOutputUom">单位</label>
+                    </div>
+                    <div class="ui-block-b" style="width:70%">
+                        <input data-mini="true" name="productionOutputUom" id="productionOutputUom" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color:#ffffff"/>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px;">
+                        <label for="productionUsagePurpose">用途</label>
+                    </div>
+                    <div class="ui-block-b" style="width:70%">
+                        <input data-mini="true" name="productionUsagePurpose" id="productionUsagePurpose" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color:#ffffff"/>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px;">
+                        <label for="memo">备注</label>
+                    </div>
+                    <div class="ui-block-b" style="width:70%">
+                        <textarea data-mini="true" cols="40" rows="8" name="memo" id="memo"></textarea>
+                    </div>
+                </div>
+                <hr style="color:#ffffff"/>
+                <h2 style="color:red" id="error"></h2><br/>
+                <input type="hidden" id="productionHistoryId" />
+                <button id="save" data-role="button" data-icon="check" data-inline="true" data-theme="a" class="save">Save</button>
+                <button id="delete" data-role="button" data-icon="delete" data-inline="true" data-theme="z" class="destroy">Delete</button>
+            </div>
+        </div>
+    </body>
+</apex:page>

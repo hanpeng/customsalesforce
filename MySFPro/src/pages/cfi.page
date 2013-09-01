@@ -1,0 +1,1352 @@
+<apex:page showHeader="false" sidebar="false" standardController="Contact">
+    <apex:stylesheet value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'jquery.mobile-1.3.0.min.css')}" />
+    <apex:includeScript value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'jquery-1.9.1.min.js')}" />
+    <apex:includeScript value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'jquery.mobile-1.3.0.min.js')}" />
+    <apex:includeScript value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'ForceTk.js')}" />
+    <head>
+<title>Contacts</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    </head>
+    <script type="text/javascript">
+        var $j = jQuery.noConflict();
+        var AccountList = new Array();
+        var cfiWorkJobList = new Array();
+        var cfiWorkJobChildList = new Array();
+        var cfiProcTechWorkSiteList = new Array();
+        var cptwsCfiWorkJobChildList = new Array();
+        var cptwsCfiptwsHazardFactorList = new Array();
+        var testParameterList = new Array();
+        var lookupObject = null;
+        var restAPIClient = new forcetk.Client();
+        restAPIClient.setSessionToken('{!$Api.Session_ID}');
+        
+        $j(document).ready(function(){
+            $j('#saveCfiWorkJob').click(function(e) {
+                    addUpdateCfiWorkJob(e);
+            });
+            $j('#saveCfiWorkJobChild').click(function(e) {
+                    addUpdateCfiWorkJobChild(e);
+            });
+            $j('#saveAccount').click(function(e) {
+                    addUpdateAccount(e);
+            });
+            $j('#loadIdentificScheme').click(function(e) {
+                    loadIdentificScheme(e);
+            });
+            $j('#saveCfiProcTechWorkSite').click(function(e) {
+                    addUpdateCfiProcTechWorkSite(e);
+            });
+            $j('#saveCptwsCfiWorkJobChild').click(function(e) {
+                    addUpdateCptwsCfiWorkJobChild(e);
+            });
+            $j('#saveCptwsCfiptwsHazardFactor').click(function(e) {
+                    addUpdateCptwsCfiptwsHazardFactor(e);
+            });
+            $j('#saveTestParameter').click(function(e) {
+                    addUpdateTestParameter(e);
+            });
+            getAllAccount();
+        });
+      function setGlobalAccount(AccountId,AccountName){
+        if (AccountId) {
+            $j('#AccountId').val(AccountId);
+            $j('#AccountName').val(AccountName);
+            $j('#SelectAccount').text("当前客户：" + AccountName);
+            $j.mobile.changePage('#customerSitePage', {changeHash: true});
+        }
+      }
+      function getGlobalAccountId(){
+        return $j('#AccountId').val();
+      }
+      function getGlobalAccountName(){
+        return $j('#AccountName').val();
+      }
+      function newAccount(){
+            $j('#AccountPage').find(':input[name=Id]').val("");
+          $j('#AccountPage').find(':input[name=Name]').val("");
+          $j('#AccountPage').find(':input[name=Phone]').val("");
+          $j.mobile.changePage('#AccountPage', {changeHash: true});
+      }
+      function getAllAccount(){
+              $j.mobile.showPageLoadingMsg();
+              var q = "SELECT Id, Name, Phone FROM Account where AccountSource = 'Lims'";
+              restAPIClient.query(q , 
+                function(response) {
+                      showAccountList(response.records);
+                });
+      }
+      function showAccountList(records){
+              $j('#AccountList').empty();
+              AccountList.length = 0;
+              $j.each(records,
+                  function(index) {
+                  AccountList[index] = this;
+                  var newLi = $j('<li></li>');
+                  var newLink = $j('<a name="' +index+ '" data-icon="gear" data-transition="flip">'+this.Name+ '</a>');
+                  newLink.click(function(e) {
+                      e.preventDefault();
+                      $j.mobile.showPageLoadingMsg();
+                      $j('#AccountPage').find(':input[name=Id]').val(AccountList[this.name].Id);
+                      $j('#AccountPage').find(':input[name=Name]').val(AccountList[this.name].Name);
+                      $j('#AccountPage').find(':input[name=Phone]').val(AccountList[this.name].Phone);
+                        setGlobalAccount(AccountList[this.name].Id, AccountList[this.name].Name);
+                  });
+                  newLi.append(newLink);            
+                  newLi.appendTo('#AccountList');
+                });
+              $j.mobile.hidePageLoadingMsg();
+              $j('#AccountList').listview('refresh');
+      }
+      function addUpdateAccount(e) {
+          e.preventDefault();
+          var Id= $j('#AccountPage').find(':input[name=Id]').val();
+          var AccountEntity = {Name: $j('#AccountPage').find(':input[name=Name]').val(),
+                  Phone: $j('#AccountPage').find(':input[name=Phone]').val(),
+                  AccountSource:'Lims'};
+          if (Id=== 'undefined' || Id=== ''){
+              restAPIClient.create('Account', AccountEntity, sucessCallbackByAccount, displayErrorByAccount); 
+          } else {
+              restAPIClient.update('Account', Id, AccountEntity, sucessCallbackByAccount, displayErrorByAccount); 
+          }
+      }
+      function sucessCallbackByAccount(e){
+          getAllAccount();
+          $j.mobile.changePage('#AccountListPage', {changeHash: true});
+      }
+      function displayErrorByAccount(e){
+          var error = JSON.parse(e.responseText);
+          $j('#AccountError').html(error[0].message);
+      }
+        
+      function newCfiWorkJob(){
+          $j('#cfiWorkJobPage').find(':input[name=Id]').val("");
+          $j('#cfiWorkJobPage').find(':input[name=workJobName]').val("");
+          $j('#cfiWorkJobPage').find(':input[name=workerQty]').val("");
+          $j('#cfiWorkJobPage').find(':input[name=workerQtyMale]').val("");
+          $j('#cfiWorkJobPage').find(":input[name=workerQtyFemale]").val("");
+          $j('#cfiWorkJobPage').find(':input[name=isFixed]').val("");
+          $j('#cfiWorkJobPage').find(':input[name=shiftClass]').val("");
+          $j('#cfiWorkJobPage').find(':input[name=workTime]').val("");
+          $j('#cfiWorkJobPage').find(':input[name=description]').val("");
+          $j('#cfiWorkJobPage').find(':input[name=memo]').val("");
+          $j.mobile.changePage('#cfiWorkJobPage', {changeHash: true});
+          $j('#cfiWorkJobChildDiv').hide();
+      }
+      function detailCfiWorkJobChild(){
+          $j.mobile.changePage('#cfiWorkJobChildPage', {changeHash: true});
+      }
+      function loadCfiWorkJobList(){
+                    lookupObject = null;
+              getAllCfiWorkJob(lookupObject);
+              $j('#cfiWorkJobPageBack').attr("href","#customerSitePage");
+              $j.mobile.changePage('#cfiWorkJobListPage', {changeHash: true});
+      }
+      function loadIdentificScheme(e){
+              this.href="findHazardIdents";
+             // getAllIdentificationSchemes();
+             // $j.mobile.changePage('#identificSchemeHomePage', {changeHash: false});
+             
+      }
+      function getAllCfiWorkJob(lookupObject){
+              $j.mobile.showPageLoadingMsg();
+              var q = "select Id, workJobName__c, description__c, isFixed__c, shiftClass__c, workerQty__c, workerQtyFemale__c, workerQtyMale__c, workTime__c, memo__c from CfiWorkJob__c where AccountId__c = '" +getGlobalAccountId()+ "'";
+              restAPIClient.query(q , 
+                function(response) {
+                      showCfiWorkJobList(response.records,lookupObject);
+                });
+      }
+      function showCfiWorkJobList(records,lookupObject){
+              $j('#cfiWorkJobList').empty();
+              cfiWorkJobList.length = 0;
+              $j.each(records,
+                  function(index) {
+                  cfiWorkJobList[index] = this;
+                  var newLi = $j('<li></li>');
+                  var newLink = $j('<a name="' +index+ '" data-icon="gear" data-transition="flip">'+this.workJobName__c+ '</a>');
+                  newLink.click(function(e) {
+                      e.preventDefault();
+                      $j.mobile.showPageLoadingMsg();
+                      if(lookupObject != null) {
+                        $j(lookupObject.obj1).val(cfiWorkJobList[this.name].Id);
+                        $j(lookupObject.obj2).val(cfiWorkJobList[this.name].workJobName__c);
+                        $j.mobile.changePage(lookupObject.pageName, {changeHash: true});
+                        lookupObject = null;
+                        } else {
+                            $j('#cfiWorkJobPage').find(':input[name=Id]').val(cfiWorkJobList[this.name].Id);
+                          $j('#cfiWorkJobPage').find(':input[name=workJobName]').val(cfiWorkJobList[this.name].workJobName__c);
+                          $j('#cfiWorkJobPage').find(':input[name=workerQty]').val(cfiWorkJobList[this.name].workerQty__c);
+                          $j('#cfiWorkJobPage').find(':input[name=workerQtyMale]').val(cfiWorkJobList[this.name].workerQtyMale__c);
+                          $j('#cfiWorkJobPage').find(":input[name=workerQtyFemale]").val(cfiWorkJobList[this.name].workerQtyFemale__c);
+                          $j('#cfiWorkJobPage').find(':input[name=isFixed]').val(cfiWorkJobList[this.name].isFixed__c);
+                          $j('#cfiWorkJobPage').find(':input[name=shiftClass]').val(cfiWorkJobList[this.name].shiftClass__c);
+                          $j('#cfiWorkJobPage').find(':input[name=workTime]').val(cfiWorkJobList[this.name].workTime__c);
+                          $j('#cfiWorkJobPage').find(':input[name=description]').val(cfiWorkJobList[this.name].description__c);
+                          $j('#cfiWorkJobPage').find(':input[name=memo]').val(cfiWorkJobList[this.name].memo__c);
+                          getAllCfiWorkJobChild(cfiWorkJobList[this.name].Id);
+                          $j.mobile.changePage('#cfiWorkJobPage', {changeHash: true});
+                        }
+                  });
+                  newLi.append(newLink);            
+                  newLi.appendTo('#cfiWorkJobList');
+                });
+              $j.mobile.hidePageLoadingMsg();
+              $j('#cfiWorkJobList').listview('refresh');
+      }
+      function addUpdateCfiWorkJob(e) {
+          e.preventDefault();
+          var Id= $j('#cfiWorkJobPage').find(':input[name=Id]').val();
+          var cfiWorkJobEntity = {workJobName__c: $j('#cfiWorkJobPage').find(':input[name=workJobName]').val(),
+                  AccountId__c:getGlobalAccountId(),
+                  workerQty__c: $j('#cfiWorkJobPage').find(':input[name=workerQty]').val(),
+                  workerQtyMale__c: $j('#cfiWorkJobPage').find(':input[name=workerQtyMale]').val(),
+                  workerQtyFemale__c: $j('#cfiWorkJobPage').find(':input[name=workerQtyFemale]').val(),
+                  isFixed__c: $j('#cfiWorkJobPage').find(':input[name=isFixed]').val(),
+                  shiftClass__c: $j('#cfiWorkJobPage').find(':input[name=shiftClass]').val(),
+                  workTime__c: $j('#cfiWorkJobPage').find(':input[name=workTime]').val(),
+                  description__c: $j('#cfiWorkJobPage').find(':input[name=description]').val(),
+                  memo__c: $j('#cfiWorkJobPage').find(':input[name=memo]').val()};
+          if (Id=== 'undefined' || Id=== ''){
+              restAPIClient.create('CfiWorkJob__c', cfiWorkJobEntity, sucessCallbackBycfiWorkJob, displayErrorBycfiWorkJob); 
+          } else {
+              restAPIClient.update('CfiWorkJob__c', Id, cfiWorkJobEntity, sucessCallbackBycfiWorkJob, displayErrorBycfiWorkJob); 
+          }
+      }
+      function sucessCallbackBycfiWorkJob(e){
+          getAllCfiWorkJob(lookupObject);
+          $j.mobile.changePage('#cfiWorkJobListPage', {changeHash: true});
+      }
+      function displayErrorBycfiWorkJob(e){
+          var error = JSON.parse(e.responseText);
+          $j('#cfiWorkJobError').html(error[0].message);
+      }
+        
+      function newCfiWorkJobChild(){
+              var cfiWorkJobId = $j('#cfiWorkJobPage').find(':input[name=Id]').val();
+              if (cfiWorkJobId != '') {
+            $j('#cfiWorkJobChildPage').find(':input[name=Id]').val("");
+            $j('#cfiWorkJobChildPage').find(':input[name=cfiptwsId]').val("");
+            $j('#cfiWorkJobChildPage').find(':input[name=cfiptwsName]').val("");
+            $j('#cfiWorkJobChildPage').find(':input[name=memo]').val("");
+            $j('#cfiWorkJobChildPage').find(':input[name=workTime]').val("");
+            $j('#cfiWorkJobChildPage').find(':input[name=sequenceId]').val("");
+                  $j('#cfiWorkJobChildPage').find(':input[name=cfiWorkJobId]').val(cfiWorkJobId);
+              $j.mobile.changePage('#cfiWorkJobChildPage', {changeHash: true});
+              }
+      }
+      function getAllCfiWorkJobChild(Id){
+              $j.mobile.showPageLoadingMsg();
+              if (Id != 'undefined' || Id != ''){
+                      $j('#cfiWorkJobChildDiv').show();
+                      var q = "select Id, cfiptwsId__c, cfiptwsId__r.stationName__c, cfiWorkJob__c, memo__c, sequenceId__c, workTime__c from CfiWorkJobChild__c where cfiWorkJob__c = '" + Id + "'";
+                      restAPIClient.query(q , 
+                        function(response) {
+                              showCfiWorkJobChildList(response.records);
+                        });
+              }
+      }
+      function showCfiWorkJobChildList(records){
+              $j('#cfiWorkJobChildList').empty();
+              cfiWorkJobChildList.length = 0;
+              $j.each(records,
+                  function(index) {
+                  cfiWorkJobChildList[index] = this;
+                  var newLi = $j('<li></li>');
+                  var newLink = $j('<a name="' +index+ '" data-icon="gear" data-transition="flip">'+this.cfiptwsId__r.stationName__c+'</a>');
+                  newLink.click(function(e) {
+                      e.preventDefault();
+                      $j.mobile.showPageLoadingMsg();
+                      $j('#cfiWorkJobChildPage').find(':input[name=cfiWorkJobId]').val(cfiWorkJobChildList[this.name].cfiWorkJob__c);
+                      $j('#cfiWorkJobChildPage').find(':input[name=Id]').val(cfiWorkJobChildList[this.name].Id);
+                      $j('#cfiWorkJobChildPage').find(':input[name=cfiptwsId]').val(cfiWorkJobChildList[this.name].cfiptwsId__c);
+                      $j('#cfiWorkJobChildPage').find(':input[name=cfiptwsName]').val(cfiWorkJobChildList[this.name].cfiptwsId__r.stationName__c);
+                      $j('#cfiWorkJobChildPage').find(':input[name=memo]').val(cfiWorkJobChildList[this.name].memo__c);
+                      $j('#cfiWorkJobChildPage').find(':input[name=workTime]').val(cfiWorkJobChildList[this.name].workTime__c);
+                      $j('#cfiWorkJobChildPage').find(':input[name=sequenceId]').val(cfiWorkJobChildList[this.name].sequenceId__c);
+                      $j.mobile.changePage('#cfiWorkJobChildPage', {changeHash: true});
+                  });
+                  newLi.append(newLink);            
+                  newLi.appendTo('#cfiWorkJobChildList');
+                });
+              $j.mobile.hidePageLoadingMsg();
+              $j('#cfiWorkJobChildList').listview('refresh');
+      }
+      function addUpdateCfiWorkJobChild(e) {
+          e.preventDefault();
+          var Id= $j('#cfiWorkJobChildPage').find(':input[name=Id]').val();
+          var cfiWorkJobChildEntity = {cfiptwsId__c: $j('#cfiWorkJobChildPage').find(':input[name=cfiptwsId]').val(),
+                          cfiWorkJob__c: $j('#cfiWorkJobChildPage').find(':input[name=cfiWorkJobId]').val(),
+                  memo__c: $j('#cfiWorkJobChildPage').find(':input[name=memo]').val(),
+                  workTime__c: $j('#cfiWorkJobChildPage').find(':input[name=workTime]').val(),
+                  sequenceId__c: $j('#cfiWorkJobChildPage').find(':input[name=sequenceId]').val()};
+          if (Id=== 'undefined' || Id=== ''){
+              restAPIClient.create('CfiWorkJobChild__c', cfiWorkJobChildEntity, sucessCallbackByCfiWorkJobChild, displayErrorByCfiWorkJobChild); 
+          } else {
+              restAPIClient.update('CfiWorkJobChild__c', Id, cfiWorkJobChildEntity, sucessCallbackByCfiWorkJobChild, displayErrorByCfiWorkJobChild); 
+          }
+      }
+      function sucessCallbackByCfiWorkJobChild(e){
+              var Id= $j('#cfiWorkJobPage').find(':input[name=Id]').val();
+          getAllCfiWorkJobChild(Id);
+          $j.mobile.changePage('#cfiWorkJobPage', {changeHash: true});
+      }
+      function displayErrorByCfiWorkJobChild(e){
+          var error = JSON.parse(e.responseText);
+          $j('#cfiWorkJobChildError').html(error[0].message);
+      }
+      function lookupCfiProcTechWorkSite(){
+        lookupObject = {};
+        lookupObject.obj1 = $j('#cfiWorkJobChildPage').find(':input[name=cfiptwsId]')[0];
+        lookupObject.obj2 = $j('#cfiWorkJobChildPage').find(':input[name=cfiptwsName]')[0];
+        lookupObject.pageName = "#cfiWorkJobChildPage";
+        getAllCfiProcTechWorkSite(lookupObject);
+        $j('#cfiWorkJobChildPageBack').attr("href","javascript:lookupBackCfiWorkJobChildPage();");
+        $j.mobile.changePage('#cfiProcTechWorkSiteListPage', {changeHash: true});
+      }
+      function lookupBackCfiWorkJobChildPage(){
+        lookupObject=null;
+        $j.mobile.changePage("#cfiWorkJobChildPage", {changeHash: true});
+      }
+      function loadCfiProcTechWorkSiteList(){
+              lookupObject = null;
+              getAllCfiProcTechWorkSite(lookupObject);
+              $j('#cfiWorkJobChildPageBack').attr("href","#customerSitePage");
+              $j.mobile.changePage('#cfiProcTechWorkSiteListPage', {changeHash: true});
+      }
+      function newCfiProcTechWorkSite(){
+        $j('#cfiProcTechWorkSitePage').find(':input[name=Id]').val("");
+        $j('#cfiProcTechWorkSitePage').find(':input[name=buildingName]').val("");
+        $j('#cfiProcTechWorkSitePage').find(':input[name=sampleSequence]').val("");
+        $j('#cfiProcTechWorkSitePage').find(':input[name=stationName]').val("");
+        $j('#cfiProcTechWorkSitePage').find(":input[name=stationQtyDesign]").val("");
+        $j('#cfiProcTechWorkSitePage').find(':input[name=workSiteName]').val("");
+        $j('#cptwsCfiWorkJobChildDiv').hide();
+        $j('#cptwsCfiptwsHazardFactorDiv').hide();
+        
+        $j.mobile.changePage('#cfiProcTechWorkSitePage', {changeHash: true});
+      }
+      function getAllCfiProcTechWorkSite(lookupObject){
+            $j.mobile.showPageLoadingMsg();
+            var q = "select Id, buildingName__c, sampleSequence__c, stationName__c, stationQtyDesign__c, workSiteName__c from CfiProcTechWorkSite__c where AccountId__c = '" +getGlobalAccountId()+ "'";
+            restAPIClient.query(q , 
+              function(response) {
+                    showCfiProcTechWorkSiteList(response.records,lookupObject);
+              });
+          }
+      function showCfiProcTechWorkSiteList(records,lookupObject){
+            $j('#cfiProcTechWorkSiteList').empty();
+            cfiProcTechWorkSiteList.length = 0;
+            $j.each(records,
+                function(index) {
+                cfiProcTechWorkSiteList[index] = this;
+                var newLi = $j('<li></li>');
+                var newLink = $j('<a name="' +index+ '" data-icon="gear" data-transition="flip">'+this.stationName__c+ '</a>');
+                newLink.click(function(e) {
+                    e.preventDefault();
+                    $j.mobile.showPageLoadingMsg();
+                    if(lookupObject != null) {
+                        $j(lookupObject.obj1).val(cfiProcTechWorkSiteList[this.name].Id);
+                        $j(lookupObject.obj2).val(cfiProcTechWorkSiteList[this.name].stationName__c);
+                        $j.mobile.changePage(lookupObject.pageName, {changeHash: true});
+                        lookupObject = null;
+                    } else {
+                        $j('#cfiProcTechWorkSitePage').find(':input[name=Id]').val(cfiProcTechWorkSiteList[this.name].Id);
+                        $j('#cfiProcTechWorkSitePage').find(':input[name=buildingName]').val(cfiProcTechWorkSiteList[this.name].buildingName__c);
+                        $j('#cfiProcTechWorkSitePage').find(':input[name=sampleSequence]').val(cfiProcTechWorkSiteList[this.name].sampleSequence__c);
+                        $j('#cfiProcTechWorkSitePage').find(':input[name=stationName]').val(cfiProcTechWorkSiteList[this.name].stationName__c);
+                        $j('#cfiProcTechWorkSitePage').find(":input[name=stationQtyDesign]").val(cfiProcTechWorkSiteList[this.name].stationQtyDesign__c);
+                        $j('#cfiProcTechWorkSitePage').find(':input[name=workSiteName]').val(cfiProcTechWorkSiteList[this.name].workSiteName__c);
+                        getAllCptwsCfiWorkJobChild(cfiProcTechWorkSiteList[this.name].Id);
+                        getAllCptwsCfiptwsHazardFactor(cfiProcTechWorkSiteList[this.name].Id);
+                        $j.mobile.changePage('#cfiProcTechWorkSitePage', {changeHash: true});
+                    }
+                });
+                newLi.append(newLink);            
+                newLi.appendTo('#cfiProcTechWorkSiteList');
+              });
+            $j.mobile.hidePageLoadingMsg();
+            $j('#cfiProcTechWorkSiteList').listview('refresh');
+      }
+      function addUpdateCfiProcTechWorkSite(e) {
+        e.preventDefault();
+        var Id= $j('#cfiProcTechWorkSitePage').find(':input[name=Id]').val();
+        var cfiProcTechWorkSiteEntity = {buildingName__c: $j('#cfiProcTechWorkSitePage').find(':input[name=buildingName]').val(),
+                      AccountId__c:getGlobalAccountId(),
+                sampleSequence__c: $j('#cfiProcTechWorkSitePage').find(':input[name=sampleSequence]').val(),
+                stationName__c: $j('#cfiProcTechWorkSitePage').find(':input[name=stationName]').val(),
+                stationQtyDesign__c: $j('#cfiProcTechWorkSitePage').find(':input[name=stationQtyDesign]').val(),
+                workSiteName__c: $j('#cfiProcTechWorkSitePage').find(':input[name=workSiteName]').val()};
+        if (Id=== 'undefined' || Id=== ''){
+            restAPIClient.create('CfiProcTechWorkSite__c', cfiProcTechWorkSiteEntity, sucessCallbackByCfiProcTechWorkSite, displayErrorByCfiProcTechWorkSite); 
+        } else {
+            restAPIClient.update('CfiProcTechWorkSite__c', Id, cfiProcTechWorkSiteEntity, sucessCallbackByCfiProcTechWorkSite, displayErrorByCfiProcTechWorkSite); 
+        }
+      }
+      function sucessCallbackByCfiProcTechWorkSite(e){
+        getAllCfiProcTechWorkSite(lookupObject);
+        $j.mobile.changePage('#cfiProcTechWorkSiteListPage', {changeHash: true});
+      }
+      function displayErrorByCfiProcTechWorkSite(e){
+        var error = JSON.parse(e.responseText);
+        $j('#cfiProcTechWorkSiteError').html(error[0].message);
+      }
+      function newCptwsCfiWorkJobChild(){
+          var cfiProcTechWorkSiteId= $j('#cfiProcTechWorkSitePage').find(':input[name=Id]').val();
+          if (cfiProcTechWorkSiteId != '') {
+            $j('#cptwsCfiWorkJobChildPage').find(':input[name=Id]').val("");
+            $j('#cptwsCfiWorkJobChildPage').find(':input[name=cfiWorkJob]').val("");
+            $j('#cptwsCfiWorkJobChildPage').find(':input[name=cfiWorkJobName]').val("");
+                $j.mobile.changePage('#cptwsCfiWorkJobChildPage', {changeHash: true});
+          }
+      }
+      function lookupCfiWorkJob(){
+        lookupObject = {};
+        lookupObject.obj1 = $j('#cptwsCfiWorkJobChildPage').find(':input[name=cfiWorkJob]')[0];
+        lookupObject.obj2 = $j('#cptwsCfiWorkJobChildPage').find(':input[name=cfiWorkJobName]')[0];
+        lookupObject.pageName = "#cptwsCfiWorkJobChildPage";
+        getAllCfiWorkJob(lookupObject);
+        $j('#cfiWorkJobPageBack').attr("href","javascript:lookupBackCptwsCfiWorkJobChildPage();");
+        $j.mobile.changePage('#cfiWorkJobListPage', {changeHash: true});
+      }
+      function lookupBackCptwsCfiWorkJobChildPage(){
+        lookupObject=null;
+        $j.mobile.changePage("#cptwsCfiWorkJobChildPage", {changeHash: true});
+      }
+      function getAllCptwsCfiWorkJobChild(Id){
+            $j.mobile.showPageLoadingMsg();
+            if (Id != 'undefined' || Id != ''){
+                $j('#cptwsCfiWorkJobChildDiv').show();
+                var q = "select cfiWorkJob__r.workJobName__c, cfiWorkJob__r.Id, Id from CfiWorkJobChild__c where cfiptwsId__c ='"+Id+"'";
+                restAPIClient.query(q , 
+              function(response) {
+                    showCptwsCfiWorkJobChildList(response.records);
+              });
+            }
+      }
+      function showCptwsCfiWorkJobChildList(records){
+            $j('#cptwsCfiWorkJobChildList').empty();
+            cptwsCfiWorkJobChildList.length = 0;
+            $j.each(records,
+                function(index) {
+                cptwsCfiWorkJobChildList[index] = this;
+                var newLi = $j('<li></li>');
+                var newLink = $j('<a name="' +index+ '" data-icon="gear" data-transition="flip">'+this.cfiWorkJob__r.workJobName__c+ '</a>');
+                newLink.click(function(e){
+                    e.preventDefault();
+                    $j.mobile.showPageLoadingMsg();
+                    $j('#cptwsCfiWorkJobChildPage').find(':input[name=Id]').val(cptwsCfiWorkJobChildList[this.name].Id);
+                    $j('#cptwsCfiWorkJobChildPage').find(':input[name=cfiWorkJob]').val(cptwsCfiWorkJobChildList[this.name].cfiWorkJob__r.Id);
+                    $j('#cptwsCfiWorkJobChildPage').find(':input[name=cfiWorkJobName]').val(cptwsCfiWorkJobChildList[this.name].cfiWorkJob__r.workJobName__c);
+                    $j.mobile.changePage('#cptwsCfiWorkJobChildPage', {changeHash: true});
+                });
+                newLi.append(newLink);            
+                newLi.appendTo('#cptwsCfiWorkJobChildList');
+              });
+            $j.mobile.hidePageLoadingMsg();
+            $j('#cptwsCfiWorkJobChildList').listview('refresh');
+      }
+      function addUpdateCptwsCfiWorkJobChild(e) {
+        e.preventDefault();
+        var Id= $j('#cptwsCfiWorkJobChildPage').find(':input[name=Id]').val();
+        var cfiWorkJobChildEntity = {cfiWorkJob__c: $j('#cptwsCfiWorkJobChildPage').find(':input[name=cfiWorkJob]').val(),
+                cfiptwsId__c:$j('#cfiProcTechWorkSitePage').find(':input[name=Id]').val()};
+        if (Id=== 'undefined' || Id=== ''){
+            restAPIClient.create('CfiWorkJobChild__c', cfiWorkJobChildEntity, sucessCallbackByCptwsCfiWorkJobChild, displayErrorByCptwsCfiWorkJobChild); 
+        } else {
+            restAPIClient.update('CfiWorkJobChild__c', Id, cfiWorkJobChildEntity, sucessCallbackByCptwsCfiWorkJobChild, displayErrorByCptwsCfiWorkJobChild); 
+        }
+      }
+      function sucessCallbackByCptwsCfiWorkJobChild(e){
+        var Id= $j('#cfiProcTechWorkSitePage').find(':input[name=Id]').val();
+        getAllCptwsCfiWorkJobChild(Id);
+        $j.mobile.changePage('#cfiProcTechWorkSitePage', {changeHash: true});
+      }
+      function displayErrorByCptwsCfiWorkJobChild(e){
+        var error = JSON.parse(e.responseText);
+        $j('#cptwsCfiWorkJobChildError').html(error[0].message);
+      }
+      
+      function lookupCfiptwsHazardFactor(){
+      /*  lookupObject = {};
+        lookupObject.obj1 = $j('#cptwsCfiWorkJobChildPage').find(':input[name=cfiWorkJob]')[0];
+        lookupObject.obj2 = $j('#cptwsCfiWorkJobChildPage').find(':input[name=cfiWorkJobName]')[0];
+        lookupObject.pageName = "#identificSchemeHomePage"; */
+      //  getAllCfiWorkJob();
+        getAllIdentificationSchemes();
+        $j.mobile.changePage('#identificSchemeHomePage', {changeHash: true});
+      }
+      
+      function getAllIdentificationSchemes() {
+            $j.mobile.showPageLoadingMsg();
+            var q = "select sampleSequence__c,stationName__c,workSiteName__c,(select hazardFactor__r.Name from CfiProcTechWorkSite__c.CfiptwsHazardFactor__r) from CfiProcTechWorkSite__c order by sampleSequence__c";
+            restAPIClient.query(q, function(response) {
+                showIdentificationSchemes(response.records);
+            });
+        }
+
+        function showIdentificationSchemes(records) {
+            $j('#identificSchemeList').empty();
+            $j.each(records, function(index) {
+                var testParamName = '';
+                if (this.CfiptwsHazardFactor__r) {
+                    $j.each(this.CfiptwsHazardFactor__r.records, function(index, value) {
+                        if (index == 0) {
+                            testParamName = value.hazardFactor__r.Name;
+                        } else {
+                            testParamName += ", " + value.hazardFactor__r.Name;
+                        }
+                    })
+                    var newLink = $j('<hr /><div class="ui-grid-c"><div class="ui-block-a" style= "width:10%;text-align:center;border-right-style:Ridge;border-width: 1pt;">'+ this.sampleSequence__c + '</div>'
+                            + '<div class="ui-block-b" style="width:27%;text-align:center;border-right-style:Ridge;border-width: 1pt;">'+ this.stationName__c + '</div>'
+                            + '<div class="ui-block-c" style="width:23%;text-align:center;border-right-style:Ridge;border-width: 1pt;">'+ this.workSiteName__c + '</div>'
+                            + '<div class="ui-block-d" style="width:40%;text-align:center;">'+ testParamName + '</div></div>');
+                    newLink.appendTo('#identificSchemeList');
+                }
+            });
+            $j.mobile.hidePageLoadingMsg();
+            $j('#identificSchemeList').listview('refresh');
+        }
+        function newCptwsCfiptwsHazardFactor(){
+              var cfiProcTechWorkSiteId= $j('#cfiProcTechWorkSitePage').find(':input[name=Id]').val();
+              if (cfiProcTechWorkSiteId != '') {
+                $j('#cptwsCfiptwsHazardFactorPage').find(':input[name=Id]').val("");
+                $j('#cptwsCfiptwsHazardFactorPage').find(':input[name=hazardFactor]').val("");
+                $j('#cptwsCfiptwsHazardFactorPage').find(':input[name=hazardFactorName]').val("");
+                    $j.mobile.changePage('#cptwsCfiptwsHazardFactorPage', {changeHash: true});
+              }
+          }
+                function getAllCptwsCfiptwsHazardFactor(Id){
+                $j.mobile.showPageLoadingMsg();
+                if (Id != 'undefined' || Id != ''){
+                    $j('#cptwsCfiptwsHazardFactorDiv').show();
+                    var q = "select hazardFactor__r.Name, hazardFactor__r.Id, Id from CfiptwsHazardFactor__c where cfiptwsId__c ='"+Id+"'";
+                    restAPIClient.query(q , 
+                  function(response) {
+                        showCptwsCfiptwsHazardFactorList(response.records);
+                  });
+                }
+          }
+          function showCptwsCfiptwsHazardFactorList(records){
+                $j('#cptwsCfiptwsHazardFactorList').empty();
+                cptwsCfiptwsHazardFactorList.length = 0;
+                $j.each(records,
+                    function(index) {
+                    cptwsCfiptwsHazardFactorList[index] = this;
+                    var newLi = $j('<li></li>');
+                    var newLink = $j('<a name="' +index+ '" data-icon="gear" data-transition="flip">'+this.hazardFactor__r.Name+ '</a>');
+                    newLink.click(function(e) {
+                        e.preventDefault();
+                        $j.mobile.showPageLoadingMsg();
+                        $j('#cptwsCfiptwsHazardFactorPage').find(':input[name=Id]').val(cptwsCfiptwsHazardFactorList[this.name].Id);
+                        $j('#cptwsCfiptwsHazardFactorPage').find(':input[name=hazardFactor]').val(cptwsCfiptwsHazardFactorList[this.name].hazardFactor__r.Id);
+                        $j('#cptwsCfiptwsHazardFactorPage').find(':input[name=hazardFactorName]').val(cptwsCfiptwsHazardFactorList[this.name].hazardFactor__r.Name);
+                        $j.mobile.changePage('#cptwsCfiptwsHazardFactorPage', {changeHash: true});
+                    });
+                    newLi.append(newLink);            
+                    newLi.appendTo('#cptwsCfiptwsHazardFactorList');
+                  });
+                $j.mobile.hidePageLoadingMsg();
+                $j('#cptwsCfiptwsHazardFactorList').listview('refresh');
+          }
+          function addUpdateCptwsCfiptwsHazardFactor(e) {
+            e.preventDefault();
+            var Id= $j('#cptwsCfiptwsHazardFactorPage').find(':input[name=Id]').val();
+            var cfiptwsHazardFactorEntity = {hazardFactor__c: $j('#cptwsCfiptwsHazardFactorPage').find(':input[name=hazardFactor]').val(),
+                    cfiptwsId__c:$j('#cfiProcTechWorkSitePage').find(':input[name=Id]').val()};
+            if (Id=== 'undefined' || Id=== ''){
+                restAPIClient.create('CfiptwsHazardFactor__c', cfiptwsHazardFactorEntity, sucessCallbackByCfiptwsHazardFactor, displayErrorByCfiptwsHazardFactor); 
+            } else {
+                restAPIClient.update('CfiptwsHazardFactor__c', Id, cfiptwsHazardFactorEntity, sucessCallbackByCfiptwsHazardFactor, displayErrorByCfiptwsHazardFactor); 
+            }
+          }
+          function sucessCallbackByCfiptwsHazardFactor(e){
+            var Id= $j('#cfiProcTechWorkSitePage').find(':input[name=Id]').val();
+            getAllCptwsCfiptwsHazardFactor(Id);
+            $j.mobile.changePage('#cfiProcTechWorkSitePage', {changeHash: true});
+          }
+          function displayErrorByCfiptwsHazardFactor(e){
+            var error = JSON.parse(e.responseText);
+            $j('#cptwsCfiptwsHazardFactorError').html(error[0].message);
+          }
+          function lookupCptwsCfiptwsHazardFactor(){
+            lookupObject = {};
+            lookupObject.obj1 = $j('#cptwsCfiptwsHazardFactorPage').find(':input[name=hazardFactor]')[0];
+            lookupObject.obj2 = $j('#cptwsCfiptwsHazardFactorPage').find(':input[name=hazardFactorName]')[0];
+            lookupObject.pageName = "";
+            getAllTestParameter(lookupObject);
+            $j.mobile.changePage('#testParameterListPage', {changeHash: true});
+          }
+          function newTestParameter(){
+            $j('#testParameterPage').find(':input[name=Id]').val("");
+            $j('#testParameterPage').find(':input[name=Name]').val("");
+                $j.mobile.changePage('#testParameterPage', {changeHash: true});
+          }
+                function getAllTestParameter(lookupObject){
+                $j.mobile.showPageLoadingMsg();
+                    var q = "select Name, Id from TestParameter__c";
+                    restAPIClient.query(q , 
+                  function(response) {
+                        showTestParameterList(response.records,lookupObject);
+                  });
+          }
+          function showTestParameterList(records,lookupObject){
+                $j('#testParameterList').empty();
+                testParameterList.length = 0;
+                $j.each(records,
+                    function(index) {
+                    testParameterList[index] = this;
+                    var newLi = $j('<li></li>');
+                    var newLink = $j('<a name="' +index+ '" data-icon="gear" data-transition="flip">'+this.Name+ '</a>');
+                    newLink.click(function(e) {
+                        e.preventDefault();
+                        $j.mobile.showPageLoadingMsg();
+                        $j(lookupObject.obj1).val(testParameterList[this.name].Id);
+                        $j(lookupObject.obj2).val(testParameterList[this.name].Name);
+                        $j.mobile.changePage("#cptwsCfiptwsHazardFactorPage", {changeHash: true});
+                        lookupObject = null;
+                    });
+                    newLi.append(newLink);            
+                    newLi.appendTo('#testParameterList');
+                  });
+                $j.mobile.hidePageLoadingMsg();
+                $j('#testParameterList').listview('refresh');
+          }
+          function addUpdateTestParameter(e) {
+            e.preventDefault();
+            var Id= $j('#testParameterPage').find(':input[name=Id]').val();
+            var testParameterEntity = {Name: $j('#testParameterPage').find(':input[name=Name]').val()};
+            if (Id=== 'undefined' || Id=== ''){
+                restAPIClient.create('TestParameter__c', testParameterEntity, sucessCallbackByTestParameter, displayErrorByTestParameter); 
+            } else {
+                //restAPIClient.update('TestParameter__c', Id, testParameterEntity, sucessCallbackByTestParameter, displayErrorByTestParameter); 
+            }
+          }
+          function sucessCallbackByTestParameter(e){
+            getAllTestParameter(lookupObject);
+            $j.mobile.changePage('#testParameterListPage', {changeHash: true});
+          }
+          function displayErrorByTestParameter(e){
+            var error = JSON.parse(e.responseText);
+            $j('#testParameterError').html(error[0].message);
+          }
+          
+        // cfi product info
+        var productRecs = new Array();
+        function loadCfiProductList() {
+            regBtnClickHandlers();
+            getAllProducts();
+            $j.mobile.changePage('#cfiProductListPage', {changeHash: true});
+        }
+        
+        function getAllProducts(){
+            $j.mobile.showPageLoadingMsg();
+            var q = "select id, Name, productionSpec__c, productionModel__c, productionYear__c, productionOutput__c, productionOutputUom__c, productionUsagePurpose__c, memo__c from CfiProductionHistory__c where partyId__c = '"+getGlobalAccountId()+"' order by id desc";
+            restAPIClient.query(q , 
+                        function(response) { 
+                               showCfiProducts(response.records); 
+                            }); 
+        }
+        
+        function showCfiProducts(records) {    
+                $j('#productList').empty();
+                productRecs.length = 0;
+                for(var i = 0; i < records.length; i++) { productRecs[records[i].Id] = records[i]; }
+                var x = 0;
+                $j.each(records,
+                    function() {
+                    var newLi = $j('<li></li>');
+                    var newLink = $j('<a id="' +this.Id+ '" data-transition="flip">' +this.Name+ '</a>');
+                    newLink.click(function(e) {
+                        e.preventDefault();
+                        $j.mobile.showPageLoadingMsg();
+                        $j('#productionName').val(productRecs[this.id].Name);
+                        $j('#productionYear').val(productRecs[this.id].productionYear__c);
+                        $j('#productionOutput').val(productRecs[this.id].productionOutput__c);
+                        $j('#productionOutputUom').val(productRecs[this.id].productionOutputUom__c);
+                        $j('#productionSpec').val(productRecs[this.id].productionSpec__c);
+                        $j('#productionModel').val(productRecs[this.id].productionModel__c);
+                        $j('#productionUsagePurpose').val(productRecs[this.id].productionUsagePurpose__c);
+                        $j('#productionMemo').val(productRecs[this.id].memo__c);
+                        $j('#productionHistoryId').val(productRecs[this.id].Id);
+                        $j('#cfiProductError').html('');
+//                         $j("#saveCfiProduct").hide();
+//                         $j("#deleteCfiProduct").show();
+                        $j.mobile.changePage('#cfiProductPage', {changeHash: true});
+                    });
+                    newLi.append(newLink);            
+                    newLi.appendTo('#productList');
+                    x++;
+                  });
+                
+                $j.mobile.hidePageLoadingMsg();
+                $j('#productList').listview('refresh');
+            }      
+        
+        function regBtnClickHandlers() {
+                $j('#addCfiProduct').click(function(e) {
+                    e.preventDefault();
+                    $j.mobile.showPageLoadingMsg();
+                    $j('#productionName').val('');
+                    $j('#productionYear').val('');
+                    $j('#productionOutput').val('');
+                    $j('#productionOutputUom').val('');
+                    $j('#productionSpec').val('');
+                    $j('#productionModel').val('');
+                    $j('#productionUsagePurpose').val('');
+                    $j('#productionMemo').val('');
+                    $j('#productionHistoryId').val('');
+                    $j('#cfiProductError').html('');
+//                     $j("#saveCfiProduct").show();
+//                     $j("#deleteCfiProduct").hide();
+                    $j.mobile.changePage('#cfiProductPage', {changeHash: true});
+                    $j.mobile.hidePageLoadingMsg();            
+                });     
+        
+                $j('#saveCfiProduct').click(function(e) {
+                   addUpdateProduct(e);
+                });
+        
+                $j('#deleteCfiProduct').click(function(e) {
+                   deleteProduct(e);
+                });
+            }
+            
+            function addUpdateProduct(e){
+                e.preventDefault();
+                var productionHistoryId = $j('#productionHistoryId').val();
+                var partyId = getGlobalAccountId();
+                var cfiProduct = { partyId__c : partyId, Name : $j('#productionName').val(), productionYear__c : $j('#productionYear').val(), productionOutput__c : $j('#productionOutput').val(),
+                                productionOutputUom__c : $j('#productionOutputUom').val(), productionSpec__c : $j('#productionSpec').val(), productionModel__c : $j('#productionModel').val(),
+                                productionUsagePurpose__c: $j('#productionUsagePurpose').val(), memo__c : $j('#productionMemo').val()};
+                if (productionHistoryId === 'undefined' || productionHistoryId === ''){
+                    restAPIClient.create('CfiProductionHistory__c', cfiProduct, cfiProSucessCallback, displayCfiProError); 
+                } else {
+                    restAPIClient.update('CfiProductionHistory__c', productionHistoryId, cfiProduct, cfiProSucessCallback, displayCfiProError); 
+                }
+            }
+        
+            function deleteProduct(e){
+                e.preventDefault();
+                restAPIClient.del('CfiProductionHistory__c', $j('#productionHistoryId').val(), cfiProSucessCallback, displayCfiProError);
+            }
+            
+            function cfiProSucessCallback(e){
+                getAllProducts();
+                $j.mobile.changePage('#cfiProductListPage', {changeHash: true});
+            }
+        
+            function displayCfiProError(e){
+                var error = JSON.parse(e.responseText);
+                $j('#cfiProductError').html(error[0].message);
+            }
+            function lookupBackTestParameterListPage(){
+                    lookupObject=null;
+                    $j.mobile.changePage("#testParameterListPage", {changeHash: true});
+                  }
+    </script>
+    <body>
+        <input name="AccountId" id="AccountId" placeholder="" value="" type="hidden" />
+        <input name="AccountName" id="AccountName" placeholder="" value="" type="hidden" />
+        <div data-role="page" id="AccountListPage">
+            <div data-theme="a" data-role="header">
+                <a data-role="button" href="javascript:newAccount();" class="ui-btn-right"> 创建 </a>
+                <h3>客户现场调查-客户列表</h3>
+            </div>
+            <div data-role="content">
+                <ul id="AccountList" data-filter="true" data-inset="true" data-role="listview" data-theme="c" data-dividertheme="b">
+                </ul>
+            </div>
+        </div>
+        <div data-role="page" id="AccountPage">
+            <div data-theme="a" data-role="header">
+                <a data-role="button" href="#AccountListPage" class="ui-btn-left"> 返回 </a>
+                <h3>创建客户</h3>
+            </div>
+            <div data-role="content">
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width: 30%; text-align: center; line-height: 40px;">
+                        <label for="Name">名称</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 70%">
+                        <input name="Id" placeholder="" value="" type="hidden" /> <input data-mini="true" name="Name" placeholder=""
+                            value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width: 30%; text-align: center; line-height: 40px;">
+                        <label for="Phone">电话</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 70%">
+                        <input data-mini="true" name="Phone" placeholder="" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <h2 style="color: red" id="AccountError"></h2>
+                <br />
+                <button type="button" data-inline="true" data-theme="b" id="saveAccount" name="saveAccount" value="save"></button>
+            </div>
+        </div>
+        <div data-role="page" id="customerSitePage">
+            <div data-theme="a" data-role="header">
+                <a data-role="button" href="#AccountListPage" class="ui-btn-left"> 返回 </a>
+                <h3>客户现场调查管理</h3>
+            </div>
+            <div data-role="content">
+                <div data-role="content" id="contactList" style="text-align: center;">
+                    <div class="ui-grid-b">
+                        <div class="ui-block-a">
+                            <a name="cfiWorkJobs" href="javascript:loadCfiWorkJobList();" data-iconpos="top" data-inline="true"
+                                data-role="button" data-icon="grid"></a>
+                        </div>
+                        <div class="ui-block-b">
+                            <a name="cptws" href="javascript:loadCfiProcTechWorkSiteList();" data-iconpos="top" data-inline="true"
+                                data-role="button" data-icon="grid"></a>
+                        </div>
+                        <div class="ui-block-c">
+                            <a href="javascript:loadCfiProductList();" data-iconpos="top" data-inline="true" data-role="button" data-icon="grid"></a>
+                        </div>
+                        <div class="ui-block-a">
+                            <label for="cfiWorkJobs">岗位</label>
+                        </div>
+                        <div class="ui-block-b">
+                            <label for="cptws">操作工位</label>
+                        </div>
+                        <div class="ui-block-c">
+                            <label for="">产品</label>
+                        </div>
+                        <div class="ui-block-a">
+                            <a href="javascript: lookupCfiptwsHazardFactor();" data-iconpos="top" data-inline="true" data-role="button" data-icon="grid" />
+                            <!--id="loadIdentificScheme" -->
+                        </div>
+                        <div class="ui-block-b">
+                            <a href="javascript:void(0);" data-iconpos="top" data-inline="true" data-role="button" data-icon="grid" />
+                        </div>
+                        <div class="ui-block-c">
+                            <a href="javascript:void(0);" data-iconpos="top" data-inline="true" data-role="button" data-icon="grid" />
+                        </div>
+                        <div class="ui-block-a">
+                            <label for="">识别方案</label>
+                        </div>
+                        <div class="ui-block-b">
+                            <label for="">布点方案</label>
+                        </div>
+                        <div class="ui-block-c">
+                            <label for="">原辅材料</label>
+                        </div>
+                        <div class="ui-block-a">
+                            <a href="javascript:void(0);" data-iconpos="top" data-inline="true" data-role="button" data-icon="grid" />
+                        </div>
+                        <div class="ui-block-b">
+                            <a href="javascript:void(0);" data-iconpos="top" data-inline="true" data-role="button" data-icon="grid" />
+                        </div>
+                        <div class="ui-block-c">
+                            <a href="javascript:void(0);" data-iconpos="top" data-inline="true" data-role="button" data-icon="grid" />
+                        </div>
+                        <div class="ui-block-a">
+                            <label for="">建筑情况及功能</label>
+                        </div>
+                        <div class="ui-block-b">
+                            <label for="">管理制度</label>
+                        </div>
+                        <div class="ui-block-c">
+                            <label for="">设备布局</label>
+                        </div>
+                        <div class="ui-block-a">
+                            <a href="javascript:void(0);" data-iconpos="top" data-inline="true" data-role="button" data-icon="grid" />
+                        </div>
+                        <div class="ui-block-b">
+                            <a href="javascript:void(0);" data-iconpos="top" data-inline="true" data-role="button" data-icon="grid" />
+                        </div>
+                        <div class="ui-block-c">
+                            <a href="javascript:void(0);" data-iconpos="top" data-inline="true" data-role="button" data-icon="grid" />
+                        </div>
+                        <div class="ui-block-a">
+                            <label for="">工艺流程图</label>
+                        </div>
+                        <div class="ui-block-b">
+                            <label for="">通风装置</label>
+                        </div>
+                        <div class="ui-block-c">
+                            <label for="">个人防护用品</label>
+                        </div>
+                        <div class="ui-block-a">
+                            <a href="javascript:void(0);" data-iconpos="top" data-inline="true" data-role="button" data-icon="grid" />
+                        </div>
+                        <div class="ui-block-a">
+                            <label for="">企业/厂区信息</label>
+                        </div>
+                    </div>
+                    <!-- /grid-b -->
+                </div>
+            </div>
+            <div data-theme="a" data-role="footer" data-position="fixed">
+                <h3 id="SelectAccount"></h3>
+            </div>
+        </div>
+        <div data-role="page" id="cfiWorkJobListPage">
+            <div data-theme="a" data-role="header">
+                <a data-role="button" id="cfiWorkJobPageBack" href="#customerSitePage" class="ui-btn-left"> 返回 </a> <a data-role="button"
+                    href="javascript:newCfiWorkJob();" class="ui-btn-right"> 创建 </a>
+                <h3>岗位列表</h3>
+            </div>
+            <div data-role="content">
+                <ul id="cfiWorkJobList" data-filter="true" data-inset="true" data-role="listview" data-theme="c" data-dividertheme="b">
+                </ul>
+            </div>
+        </div>
+        <div data-role="page" id="cfiWorkJobPage">
+            <div data-theme="a" data-role="header">
+                <a data-role="button" href="#cfiWorkJobListPage" class="ui-btn-left">返回</a>
+                <h3>岗位</h3>
+            </div>
+            <div data-role="content">
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width: 20%; text-align: center; line-height: 40px;">
+                        <label for="workJobName">岗位名称</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 80%">
+                        <input data-mini="true" name="workJobName" placeholder="" value="" type="text" /> <input name="Id" type="hidden" />
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <div class="ui-grid-c">
+                    <div class="ui-block-a" style="width: 20%; text-align: center; line-height: 40px;">
+                        <label for="workerQtyMale">男(人数)</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 26%">
+                        <input data-mini="true" name="workerQtyMale" placeholder="" value="" type="text" />
+                    </div>
+                    <div class="ui-block-c" style="width: 28%; text-align: center; line-height: 40px;">
+                        <label for="workerQtyFemale">女(人数)</label>
+                    </div>
+                    <div class="ui-block-d" style="width: 26%">
+                        <input data-mini="true" name="workerQtyFemale" placeholder="" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <div class="ui-grid-c">
+                    <div class="ui-block-a" style="width: 20%; text-align: center; line-height: 40px;">
+                        <label for="workerQty">总人数</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 26%">
+                        <input data-mini="true" name="workerQty" placeholder="" value="" type="text" />
+                    </div>
+                    <div class="ui-block-c" style="width: 28%; text-align: center; line-height: 40px;">
+                        <label for="isFixed">是否定点岗位</label>
+                    </div>
+                    <div class="ui-block-d" style="width: 26%">
+                        <select name="isFixed" data-mini="true">
+                            <option value="Y">是</option>
+                            <option value="N">否</option>
+                        </select>
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <div class="ui-grid-c">
+                    <div class="ui-block-a" style="width: 20%; text-align: center; line-height: 40px;">
+                        <label for="shiftClass">班制</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 26%">
+                        <input data-mini="true" name="shiftClass" placeholder="" value="" type="text" />
+                    </div>
+                    <div class="ui-block-c" style="width: 28%; text-align: center; line-height: 40px;">
+                        <label for="workTime">工作时间</label>
+                    </div>
+                    <div class="ui-block-d" style="width: 26%">
+                        <input data-mini="true" name="workTime" placeholder="" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width: 20%; text-align: center; line-height: 40px;">
+                        <label for="description">工作描述</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 80%">
+                        <input data-mini="true" name="description" placeholder="" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width: 20%; text-align: center; line-height: 40px;">
+                        <label for="memo">备注</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 80%">
+                        <input data-mini="true" name="memo" placeholder="" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <div id="cfiWorkJobError" style="color: red;" />
+                <button type="button" data-inline="true" data-theme="b" id="saveCfiWorkJob" name="saveCfiWorkJob" value="save" />
+            </div>
+            <div id="cfiWorkJobChildDiv">
+                <div data-theme="a" data-role="footer">
+                    <a data-role="button" href="javascript:newCfiWorkJobChild();" class="ui-btn-right"> 新的 </a>
+                    <h3>工作地点列表</h3>
+                </div>
+                <div data-role="content">
+                    <ul id="cfiWorkJobChildList" data-filter="true" data-inset="true" data-role="listview" data-theme="c"
+                        data-dividertheme="b">
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div data-role="page" id="cfiWorkJobChildPage">
+            <div data-theme="a" data-role="header">
+                <a data-role="button" href="#cfiWorkJobPage" class="ui-btn-left"> 返回 </a>
+                <h3>工作地点</h3>
+            </div>
+            <div data-role="content">
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width: 30%; text-align: center; line-height: 40px;">
+                        <label for="workJobName">工序号</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 70%">
+                        <input name="cfiWorkJobId" placeholder="" value="" type="hidden" /> <input name="Id" value="" type="hidden" /> <input
+                            data-mini="true" name="sequenceId" placeholder="" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width: 30%; text-align: center; line-height: 40px;">
+                        <label for="workJobName">操作工位</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 50%">
+                        <input data-mini="true" name="cfiptwsId" placeholder="" value="" type="hidden" /> <input data-mini="true"
+                            name="cfiptwsName" placeholder="" value="" type="text" />
+                    </div>
+                    <div class="ui-block-c" style="width: 20%">
+                        <a data-role="button" data-mini="true" href="javascript:lookupCfiProcTechWorkSite();"> 选择操作工位 </a>
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width: 30%; text-align: center; line-height: 40px;">
+                        <label for="workJobName">工作时间(h)</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 70%">
+                        <input data-mini="true" name="workTime" placeholder="" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width: 30%; text-align: center; line-height: 40px;">
+                        <label for="workJobName">备注</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 70%">
+                        <input data-mini="true" name="memo" placeholder="" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <div id="cfiWorkJobChildError" style="color: red;" />
+                <button data-inline="true" type="button" data-theme="b" id="saveCfiWorkJobChild" name="saveCfiWorkJobChild" value="save" />
+            </div>
+        </div>
+        <div data-role="page" id="cfiProcTechWorkSiteListPage">
+            <div data-theme="a" data-role="header">
+                <a data-role="button" id="cfiWorkJobChildPageBack" href="#customerSitePage" class="ui-btn-left"> 返回 </a> <a
+                    data-role="button" href="javascript:newCfiProcTechWorkSite();" class="ui-btn-right"> 创建 </a>
+                <h3>操作工位列表</h3>
+            </div>
+            <div data-role="content">
+                <ul id="cfiProcTechWorkSiteList" data-filter="true" data-inset="true" data-role="listview" data-theme="c"
+                    data-dividertheme="b">
+                </ul>
+            </div>
+        </div>
+        <div data-role="page" id="cfiProcTechWorkSitePage">
+            <div data-theme="a" data-role="header">
+                <a data-role="button" href="#cfiProcTechWorkSiteListPage" class="ui-btn-left"> 返回 </a>
+                <h3>操作工位</h3>
+            </div>
+            <div data-role="content">
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width: 30%; text-align: center; line-height: 40px;">
+                        <label for="sampleSequence">序列</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 70%">
+                        <input name="Id" placeholder="" value="" type="hidden" /> <input data-mini="true" name="sampleSequence"
+                            placeholder="" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width: 30%; text-align: center; line-height: 40px;">
+                        <label for="buildingName">建筑物</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 70%">
+                        <input data-mini="true" name="buildingName" placeholder="" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width: 30%; text-align: center; line-height: 40px;">
+                        <label for="workSiteName">车间/装置名称</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 70%">
+                        <input data-mini="true" name="workSiteName" placeholder="" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width: 30%; text-align: center; line-height: 40px;">
+                        <label for="stationName">操作工位</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 70%">
+                        <input data-mini="true" name="stationName" placeholder="" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width: 30%; text-align: center; line-height: 40px;">
+                        <label for="stationQtyDesign">工位数量(个)</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 70%">
+                        <input data-mini="true" name="stationQtyDesign" placeholder="" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <h2 style="color: red" id="cfiProcTechWorkSiteError"></h2>
+                <br />
+                <button type="button" data-inline="true" data-theme="b" id="saveCfiProcTechWorkSite" name="saveCfiProcTechWorkSite"
+                    value="save" />
+            </div>
+            <div id="cptwsCfiWorkJobChildDiv">
+                <div data-theme="a" data-role="footer">
+                    <a data-role="button" href="javascript:newCptwsCfiWorkJobChild();" class="ui-btn-right"> 新的 </a>
+                    <h3>操作工位-岗位列表</h3>
+                </div>
+                <div data-role="content">
+                    <ul id="cptwsCfiWorkJobChildList" data-filter="true" data-inset="true" data-role="listview" data-theme="c"
+                        data-dividertheme="b">
+                    </ul>
+                </div>
+            </div>
+            <div id="cptwsCfiptwsHazardFactorDiv">
+                          <div data-theme="a" data-role="footer">
+                              <a data-role="button" href="javascript:newCptwsCfiptwsHazardFactor();" class="ui-btn-right">
+                                    新的
+                                </a>
+                              <h3>
+                                  操作工位-危害因子列表
+                              </h3>
+                          </div>
+                          <div data-role="content" >
+                            <ul id="cptwsCfiptwsHazardFactorList" data-filter="true" data-inset="true" data-role="listview" data-theme="c" data-dividertheme="b">
+                            </ul>
+                          </div>
+                        </div>
+        </div>
+        <div data-role="page" id="cptwsCfiWorkJobChildPage">
+            <div data-theme="a" data-role="header">
+                <a data-role="button" href="#cfiProcTechWorkSitePage" class="ui-btn-left"> 返回 </a>
+                <h3>岗位</h3>
+            </div>
+            <div data-role="content">
+                <hr style="color: #ffffff" />
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width: 30%; text-align: center; line-height: 40px;">
+                        <label for="workJobName">操作岗位</label>
+                    </div>
+                    <div class="ui-block-b" style="width: 50%">
+                        <input data-mini="true" name="cfiWorkJob" placeholder="" value="" type="hidden" /> <input data-mini="true"
+                            name="Id" placeholder="" value="" type="hidden" /> <input data-mini="true" name="cfiWorkJobName" placeholder=""
+                            value="" type="text" />
+                    </div>
+                    <div class="ui-block-c" style="width: 20%">
+                        <a data-role="button" data-mini="true" href="javascript:lookupCfiWorkJob();"> 选择岗位 </a>
+                    </div>
+                </div>
+                <hr style="color: #ffffff" />
+                <div id="cptwsCfiWorkJobChildError" style="color: red;" />
+                <button data-inline="true" type="button" data-theme="b" id="saveCptwsCfiWorkJobChild" name="saveCptwsCfiWorkJobChild"
+                    value="save" />
+            </div>
+        </div>
+        <div data-role="page" data-theme="b" id="identificSchemeHomePage">                
+            <div data-role="header" data-position="fixed">
+                <h2>识别方案</h2>
+                <a href='#customerSitePage' class='ui-btn-left' data-icon='back' data-direction="reverse" data-transition="flip">返回</a>
+            </div>
+            <div data-role="content">
+                <div class="ui-grid-c">
+                    <div class="ui-block-a" style="width:10%;text-align:center;border-right-style:Ridge;border-width: 1pt;">序号</div>
+                    <div class="ui-block-b" style="width:27%;text-align:center;border-right-style:Ridge;border-width: 1pt;">车间/装置名称 </div>
+                    <div class="ui-block-c" style="width:23%;text-align:center;border-right-style:Ridge;border-width: 1pt;">操作工位</div>
+                    <div class="ui-block-d" style="width:40%;text-align:center;">职业病危害因素</div>
+                </div><!-- /grid-b -->
+                <div id="identificSchemeList">
+                </div>
+            </div>
+        </div>
+        <div data-role="page" id="cptwsCfiptwsHazardFactorPage">
+                    <div data-theme="a" data-role="header">
+                      <a data-role="button" href="#cfiProcTechWorkSitePage" class="ui-btn-left">
+                        返回
+                        </a>
+                      <h3>
+                        危害因子
+                      </h3>
+                    </div>
+                    <div data-role="content" >
+                    <hr style="color:#ffffff"/>
+                    <div class="ui-grid-a">
+                        <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px; ">
+                            <label for="workJobName">危害因子</label>
+                        </div>
+                        <div class="ui-block-b" style="width:50%">
+                            <input data-mini="true" name="hazardFactor" placeholder="" value="" type="hidden" />
+                            <input data-mini="true" name="Id" placeholder="" value="" type="hidden" />
+                            <input data-mini="true" name="hazardFactorName" placeholder="" value="" type="text" />
+                        </div>
+                        <div class="ui-block-c" style="width:20%">
+                                 <a data-role="button" data-mini="true" href="javascript:lookupCptwsCfiptwsHazardFactor();" >
+                                        选择危害因子
+                                    </a>
+                        </div>
+                    </div>
+                    <hr style="color:#ffffff"/>
+                    <div id="cptwsCfiptwsHazardFactorError" style="color:red;"/>
+                    <button data-inline="true" type="button" data-theme="b" id="saveCptwsCfiptwsHazardFactor" name="saveCptwsCfiptwsHazardFactor" value="save"/>
+                    </div>
+                </div>
+                <div data-role="page" id="testParameterListPage">
+                <div data-theme="a" data-role="header">
+                  <a data-role="button" href="#cptwsCfiptwsHazardFactorPage" class="ui-btn-left">
+                    返回
+                  </a>
+                  <a data-role="button" href="javascript:newTestParameter();" class="ui-btn-right">
+                  新的
+                </a>
+                  <h3>
+                    危害因子列表
+                  </h3>
+                </div>
+                <div data-role="content" >
+                <ul id="testParameterList" data-filter="true" data-inset="true" data-role="listview" data-theme="c" data-dividertheme="b">
+                </ul>
+              </div>
+            </div>
+            <div data-role="page" id="testParameterPage">
+                <div data-theme="a" data-role="header">
+                  <a data-role="button" href="javascript:lookupBackTestParameterListPage();" class="ui-btn-left">
+                    返回
+                    </a>
+                  <h3>
+                    危害因子
+                  </h3>
+                </div>
+                <div data-role="content" >
+                <hr style="color:#ffffff"/>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px; ">
+                        <label for="workJobName">危害因子</label>
+                    </div>
+                    <div class="ui-block-b" style="width:50%">
+                        <input data-mini="true" name="Id" placeholder="" value="" type="hidden" />
+                        <input data-mini="true" name="Name" placeholder="" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color:#ffffff"/>
+                <div id="testParameterError" style="color:red;"/>
+                <button data-inline="true" type="button" data-theme="b" id="saveTestParameter" name="saveTestParameter" value="save"/>
+                </div>
+            </div>
+            
+            
+        <div data-role="page" data-theme="b" id="cfiProductListPage">                
+            <div data-role="header" data-position="fixed">
+                <h2>产品列表</h2>
+                <a data-role="button" href="#customerSitePage" class="ui-btn-left">返回</a>
+                <a id="addCfiProduct" data-role="button" href="#" class="ui-btn-right"> 创建 </a>
+            </div>
+            <div data-role="content">            
+                <ul id="productList" data-filter="true" data-inset="true" data-role="listview" 
+                    data-theme="c" data-dividertheme="b">
+                </ul>
+            </div>
+        </div>
+        <div data-role="page" id="cfiProductPage">
+            <div data-theme="a" data-role="header">
+                <a data-role="button" href="#cfiProductListPage" class="ui-btn-left">返回</a>
+                <h3>产品</h3>
+            </div>
+            <div data-role="content" >
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px;">
+                        <label for="productionName">产品名称</label>
+                    </div>
+                    <div class="ui-block-b" style="width:70%">
+                        <input data-mini="true" name="productionName" id="productionName" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color:#ffffff"/>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px;">
+                        <label for="productionSpec">规格</label>
+                    </div>
+                    <div class="ui-block-b" style="width:70%">
+                        <input data-mini="true" name="productionSpec" id="productionSpec" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color:#ffffff"/>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px;">
+                        <label for="productionModel">型号</label>
+                    </div>
+                    <div class="ui-block-b" style="width:70%">
+                        <input data-mini="true" name="productionModel" id="productionModel" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color:#ffffff"/>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px;">
+                        <label for="productionYear">年份</label>
+                    </div>
+                    <div class="ui-block-b" style="width:70%">
+                        <input data-clear-btn="false" name="productionYear" id="productionYear" pattern="19[\d][\d]|20[\d][\d]" value="" type="number" />
+                    </div>
+                </div>
+                <hr style="color:#ffffff"/>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px;">
+                        <label for="productionOutput">产量</label>
+                    </div>
+                    <div class="ui-block-b" style="width:70%">
+                        <input data-mini="true" name="productionOutput" id="productionOutput" pattern="[0-9]+\.?[0-9]*" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color:#ffffff"/>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px;">
+                        <label for="productionOutputUom">单位</label>
+                    </div>
+                    <div class="ui-block-b" style="width:70%">
+                        <input data-mini="true" name="productionOutputUom" id="productionOutputUom" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color:#ffffff"/>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px;">
+                        <label for="productionUsagePurpose">用途</label>
+                    </div>
+                    <div class="ui-block-b" style="width:70%">
+                        <input data-mini="true" name="productionUsagePurpose" id="productionUsagePurpose" value="" type="text" />
+                    </div>
+                </div>
+                <hr style="color:#ffffff"/>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px;">
+                        <label for="memo">备注</label>
+                    </div>
+                    <div class="ui-block-b" style="width:70%">
+                        <textarea data-mini="true" cols="40" rows="8" name="memo" id="productionMemo"></textarea>
+                    </div>
+                </div>
+                <hr style="color:#ffffff"/>
+                <h2 style="color:red" id="cfiProductError"></h2><br/>
+                <input type="hidden" id="productionHistoryId" />
+                <button id="saveCfiProduct" data-role="button" data-icon="check" data-inline="true" data-theme="a" class="save">Save</button>
+            </div>
+        </div>
+    </body>
+</apex:page>

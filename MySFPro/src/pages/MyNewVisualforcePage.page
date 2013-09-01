@@ -1,0 +1,16 @@
+<apex:page sidebar="false" showHeader="true">
+    <apex:sectionHeader title="My first visualforce page" />
+    <apex:form >
+        <apex:pageblock title="A Block Title">
+        <apex:pageblockSection columns="2" title="A Section Title">
+        <apex:pageblockSectionItem >
+            <apex:outputLabel value="Enter your name here" />
+            <apex:inputtext />
+        </apex:pageblockSectionItem>
+        </apex:pageblockSection>
+        </apex:pageblock>
+        <apex:pageblock title="A New Section">
+            This is another secion.
+        </apex:pageblock>
+    </apex:form>
+</apex:page>

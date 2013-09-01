@@ -1,0 +1,69 @@
+<apex:page showHeader="false" sidebar="false" standardController="TestParameter__c">
+  <apex:stylesheet value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'jquery.mobile-1.3.0.min.css')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'jquery-1.9.1.min.js')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'jquery.mobile-1.3.0.min.js')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'ForceTk.js')}"/>
+    <head>
+        <title>识别方案</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    </head>
+    <script type="text/javascript">
+        var $j = jQuery.noConflict();
+        var restAPIClient = new forcetk.Client();
+        restAPIClient.setSessionToken('{!$Api.Session_ID}');
+        
+        $j(document).ready(function() {
+            getAllIdentificationSchemes();
+        }); 
+        
+        
+        function getAllIdentificationSchemes() {
+            $j.mobile.showPageLoadingMsg();
+            var q = "select sampleSequence__c,stationName__c,workSiteName__c,(select hazardFactor__r.Name from CfiProcTechWorkSite__c.CfiptwsHazardFactor__r) from CfiProcTechWorkSite__c order by sampleSequence__c";
+            restAPIClient.query(q, function(response) {
+                showIdentificationSchemes(response.records);
+            });
+        }
+
+        function showIdentificationSchemes(records) {
+            $j('#identificSchemeList').empty();
+            $j.each(records, function(index) {
+                var testParamName = '';
+                if (this.CfiptwsHazardFactor__r) {
+                    $j.each(this.CfiptwsHazardFactor__r.records, function(index, value) {
+                        if (index == 0) {
+                            testParamName = value.hazardFactor__r.Name;
+                        } else {
+                            testParamName += ", " + value.hazardFactor__r.Name;
+                        }
+                    })
+                    var newLink = $j('<hr /><div class="ui-grid-c"><div class="ui-block-a" style= "width:10%;text-align:center;border-right-style:Ridge;border-width: 1pt;">'+ this.sampleSequence__c + '</div>'
+                            + '<div class="ui-block-b" style="width:27%;text-align:center;border-right-style:Ridge;border-width: 1pt;">'+ this.stationName__c + '</div>'
+                            + '<div class="ui-block-c" style="width:23%;text-align:center;border-right-style:Ridge;border-width: 1pt;">'+ this.workSiteName__c + '</div>'
+                            + '<div class="ui-block-d" style="width:40%;text-align:center;">'+ testParamName + '</div></div>');
+                    newLink.appendTo('#identificSchemeList');
+                }
+            });
+            $j.mobile.hidePageLoadingMsg();
+            $j('#identificSchemeList').listview('refresh');
+        }
+                </script>
+    <body>
+        <div data-role="page" data-theme="b" id="identificSchemeHomePage">                
+            <div data-role="header" data-position="fixed">
+                <h2>识别方案</h2>
+                <a data-role="button" href="cfi" class="ui-btn-left">返回</a>
+            </div>
+            <div data-role="content">
+                <div class="ui-grid-c">
+                    <div class="ui-block-a" style="width:10%;text-align:center;border-right-style:Ridge;border-width: 1pt;">序号</div>
+                    <div class="ui-block-b" style="width:27%;text-align:center;border-right-style:Ridge;border-width: 1pt;">车间/装置名称 </div>
+                    <div class="ui-block-c" style="width:23%;text-align:center;border-right-style:Ridge;border-width: 1pt;">操作工位</div>
+                    <div class="ui-block-d" style="width:40%;text-align:center;">职业病危害因素</div>
+                </div><!-- /grid-b -->
+                <div id="identificSchemeList">
+                </div>
+            </div>
+        </div>
+    </body>
+</apex:page>

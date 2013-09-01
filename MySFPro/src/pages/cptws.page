@@ -1,0 +1,165 @@
+<apex:page showHeader="false" sidebar="false" name="cptws" standardController="Contact">
+  <apex:stylesheet value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'jquery.mobile-1.3.0.min.css')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'jquery-1.9.1.min.js')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'jquery.mobile-1.3.0.min.js')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'ForceTk.js')}"/>
+    <head>
+        <title>Contacts</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    </head>
+    <script type="text/javascript">
+        var $j = jQuery.noConflict();
+        var cfiProcTechWorkSiteList = new Array();
+        var restAPIClient = new forcetk.Client();
+        restAPIClient.setSessionToken('{!$Api.Session_ID}');
+        $j(document).ready(function(){
+          $j('#saveCfiProcTechWorkSite').click(function(e) {
+            addUpdateCfiProcTechWorkSite(e);
+          });
+          getAllCfiProcTechWorkSite();
+        });
+        function newCfiProcTechWorkSite(){
+          $j('#cfiProcTechWorkSitePage').find(':input[name=Id]').val("");
+          $j('#cfiProcTechWorkSitePage').find(':input[name=buildingName]').val("");
+          $j('#cfiProcTechWorkSitePage').find(':input[name=sampleSequence]').val("");
+          $j('#cfiProcTechWorkSitePage').find(':input[name=stationName]').val("");
+          $j('#cfiProcTechWorkSitePage').find(":input[name=stationQtyDesign]").val("");
+          $j('#cfiProcTechWorkSitePage').find(':input[name=workSiteName]').val("");
+          $j.mobile.changePage('#cfiProcTechWorkSitePage', {changeHash: true});
+      }
+        function getAllCfiProcTechWorkSite(){
+              $j.mobile.showPageLoadingMsg();
+              var q = "select Id, buildingName__c, sampleSequence__c, stationName__c, stationQtyDesign__c, workSiteName__c from cfiProcTechWorkSite__c";
+              restAPIClient.query(q , 
+                function(response) {
+                      showCfiProcTechWorkSiteList(response.records);
+                });
+      }
+      function showCfiProcTechWorkSiteList(records){
+              $j('#cfiProcTechWorkSiteList').empty();
+              cfiProcTechWorkSiteList.length = 0;
+              $j.each(records,
+                  function(index) {
+                  cfiProcTechWorkSiteList[index] = this;
+                  var newLi = $j('<li></li>');
+                  var newLink = $j('<a name="' +index+ '" data-icon="gear" data-transition="flip">'+this.stationName__c+ '</a>');
+                  newLink.click(function(e) {
+                      e.preventDefault();
+                      $j.mobile.showPageLoadingMsg();
+                      $j('#cfiProcTechWorkSitePage').find(':input[name=Id]').val(cfiProcTechWorkSiteList[this.name].Id);
+                      $j('#cfiProcTechWorkSitePage').find(':input[name=buildingName]').val(cfiProcTechWorkSiteList[this.name].buildingName__c);
+                      $j('#cfiProcTechWorkSitePage').find(':input[name=sampleSequence]').val(cfiProcTechWorkSiteList[this.name].sampleSequence__c);
+                      $j('#cfiProcTechWorkSitePage').find(':input[name=stationName]').val(cfiProcTechWorkSiteList[this.name].stationName__c);
+                      $j('#cfiProcTechWorkSitePage').find(":input[name=stationQtyDesign]").val(cfiProcTechWorkSiteList[this.name].stationQtyDesign__c);
+                      $j('#cfiProcTechWorkSitePage').find(':input[name=workSiteName]').val(cfiProcTechWorkSiteList[this.name].workSiteName__c);
+                      $j.mobile.changePage('#cfiProcTechWorkSitePage', {changeHash: true});
+                  });
+                  newLi.append(newLink);            
+                  newLi.appendTo('#cfiProcTechWorkSiteList');
+                });
+              $j.mobile.hidePageLoadingMsg();
+              $j('#cfiProcTechWorkSiteList').listview('refresh');
+      }
+      function addUpdateCfiProcTechWorkSite(e) {
+          e.preventDefault();
+          var Id= $j('#cfiProcTechWorkSitePage').find(':input[name=Id]').val();
+          var cfiProcTechWorkSiteEntity = {buildingName__c: $j('#cfiProcTechWorkSitePage').find(':input[name=buildingName]').val(),
+                  sampleSequence__c: $j('#cfiProcTechWorkSitePage').find(':input[name=sampleSequence]').val(),
+                  stationName__c: $j('#cfiProcTechWorkSitePage').find(':input[name=stationName]').val(),
+                  stationQtyDesign__c: $j('#cfiProcTechWorkSitePage').find(':input[name=stationQtyDesign]').val(),
+                  workSiteName__c: $j('#cfiProcTechWorkSitePage').find(':input[name=workSiteName]').val()};
+          if (Id=== 'undefined' || Id=== ''){
+              restAPIClient.create('cfiProcTechWorkSite__c', cfiProcTechWorkSiteEntity, sucessCallbackByCfiProcTechWorkSite, displayErrorByCfiProcTechWorkSite); 
+          } else {
+              restAPIClient.update('cfiProcTechWorkSite__c', Id, cfiProcTechWorkSiteEntity, sucessCallbackByCfiProcTechWorkSite, displayErrorByCfiProcTechWorkSite); 
+          }
+      }
+      function sucessCallbackByCfiProcTechWorkSite(e){
+          getAllCfiProcTechWorkSite();
+          $j.mobile.changePage('#cfiProcTechWorkSiteListPage', {changeHash: true});
+      }
+      function displayErrorByCfiProcTechWorkSite(e){
+          var error = JSON.parse(e.responseText);
+          $j('#cfiProcTechWorkSiteError').html(error[0].message);
+      }
+    </script>
+    <body>
+        <div data-role="page" id="cfiProcTechWorkSiteListPage">
+          <div data-theme="a" data-role="header">
+          <a data-role="button" href="#customerSitePage" class="ui-btn-left">
+            返回
+        </a>
+        <a data-role="button" href="javascript:newCfiProcTechWorkSite();" class="ui-btn-right">
+            创建
+        </a>
+          <h3>
+            操作工位列表
+          </h3>
+          </div>
+          <div data-role="content" >
+              <ul id="cfiProcTechWorkSiteList" data-filter="true" data-inset="true" data-role="listview" data-theme="c" data-dividertheme="b">
+              </ul>
+          </div>
+      </div>
+      <div data-role="page" id="cfiProcTechWorkSitePage">
+          <div data-theme="a" data-role="header">
+          <a data-role="button" href="#customerSitePage" class="ui-btn-left">
+            返回
+        </a>
+          <h3>
+            操作工位
+          </h3>
+          </div>
+          <div data-role="content" >
+            <div class="ui-grid-a">
+              <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px; ">
+                <label for="sampleSequence">序列</label>
+              </div>
+              <div class="ui-block-b" style="width:70%">
+                <input name="Id" placeholder="" value="" type="hidden" />
+                <input data-mini="true" name="sampleSequence" placeholder="" value="" type="text" />
+              </div>
+          </div>
+          <hr style="color:#ffffff"/>
+          <div class="ui-grid-a">
+              <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px; ">
+                <label for="buildingName">建筑物</label>
+              </div>
+              <div class="ui-block-b" style="width:70%">
+                <input data-mini="true" name="buildingName" placeholder="" value="" type="text" />
+              </div>
+          </div>
+          <hr style="color:#ffffff"/>
+          <div class="ui-grid-a">
+              <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px; ">
+                <label for="workSiteName">车间/装置名称</label>
+              </div>
+              <div class="ui-block-b" style="width:70%">
+                <input data-mini="true" name="workSiteName" placeholder="" value="" type="text" />
+              </div>
+          </div>
+          <hr style="color:#ffffff"/>
+          <div class="ui-grid-a">
+              <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px; ">
+                <label for="stationName">操作工位</label>
+              </div>
+              <div class="ui-block-b" style="width:70%">
+                <input data-mini="true" name="stationName" placeholder="" value="" type="text" />
+              </div>
+          </div>
+          <hr style="color:#ffffff"/>
+          <div class="ui-grid-a">
+              <div class="ui-block-a" style="width:30%;text-align:center;line-height:40px; ">
+                <label for="stationQtyDesign">工位数量(个)</label>
+              </div>
+              <div class="ui-block-b" style="width:70%">
+                <input data-mini="true" name="stationQtyDesign" placeholder="" value="" type="text" />
+              </div>
+          </div>
+          <hr style="color:#ffffff"/>
+          <h2 style="color:red" id="cfiProcTechWorkSiteError"></h2><br/>
+          <button type="button" data-inline="true" data-theme="b" id="saveCfiProcTechWorkSite" name="saveCfiProcTechWorkSite" value="save"/>
+          </div>
+      </div>
+    </body>
+</apex:page>

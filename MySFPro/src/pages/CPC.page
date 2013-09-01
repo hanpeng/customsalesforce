@@ -1,0 +1,375 @@
+<apex:page showHeader="false" sidebar="false"
+           standardController="CPC__c">
+    <apex:stylesheet value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'jquery.mobile-1.3.0.min.css')}"/>
+    <apex:stylesheet value="{!URLFOR($Resource.Mobiscroll, 'mobiscroll.custom-2.6.0.min.css')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'jquery-1.9.1.min.js')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'jquery.mobile-1.3.0.min.js')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.MobileSample_Resources_jQueryMobile, 'ForceTk.js')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.Mobiscroll, 'mobiscroll.custom-2.6.0.min.js')}"/>
+    <head>
+        <title>Contacts</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <script>
+            var $j = jQuery.noConflict();
+            var cpcRecs = new Array();
+            
+            var restAPIClient = new forcetk.Client();
+            restAPIClient.setSessionToken('{!$Api.Session_ID}');
+            
+            $j(document).ready(function(){
+                $j("#visitDate").mobiscroll().date({dateFormat:'yy-mm-dd', dateOrder: 'yymmdd', endYear:2020});
+                regBtnClickHandlers();
+                getAllCpc();
+                getAllContacts();
+                getAllHospitals();
+            });
+            
+            function getAllCpc(){
+                $j.mobile.showPageLoadingMsg();
+                var q = "select  Id, Name, fojt__c, sellingObjectives__c, visitDate__c, visitStatus__c, ActualResults__c, opening__c, Problem__c, "
+                    + "Benefits__c, Contact__c, Contact__r.firstName, Contact__r.lastName, Features__c,Submit__c, needsPayoff__c, Implication__c, Advantages__c, Region__c, Situation__c,"
+                    + "ManagerComments__c, Commitments__c, Hospital__c, Hospital__r.name from CPC__C order by Name";
+                 restAPIClient.query(q , 
+                    function(response) {
+                           showCpcs(response.records);
+                        });
+            }
+            
+            function showCpcs(records) {
+                $j('#cList').empty();
+                cpcRecs.length = 0;
+                $j.each(records,
+                    function(index) {
+                    cpcRecs[index] = this;
+                    var newLi = $j('<li></li>');
+                    var newLink = $j('<a name="' +index+ '" data-icon="gear" data-transition="flip">'+this.Name+ '</a>');
+                    newLink.click(function(e) {
+                        e.preventDefault();
+                        $j.mobile.showPageLoadingMsg();
+                        $j('#cpcName').val(cpcRecs[this.name].Name);
+                        $j('#cpcId').val(cpcRecs[this.name].Id);
+                        $j("#fojt").prop("checked", cpcRecs[this.name].fojt__c);
+                        $j('#submit').prop('checked',cpcRecs[this.name].Submit__c);
+                        $j('#opening').val(cpcRecs[this.name].opening__c);
+                        $j('#sellingObjectives').val(cpcRecs[this.name].sellingObjectives__c);
+                        $j('#visitDate').val(cpcRecs[this.name].visitDate__c);
+                        $j('#visitStatus').val(cpcRecs[this.name].visitStatus__c);
+                        $j('#actualResults').val(cpcRecs[this.name].ActualResults__c);
+                        $j('#benefits').val(cpcRecs[this.name].Benefits__c);
+                        $j('#contactId').val(cpcRecs[this.name].Contact__c);
+                        $j('#contactName').val(cpcRecs[this.name].Contact__r.LastName+" ,"+ cpcRecs[this.name].Contact__r.FirstName);
+                        $j('#hospitalId').val(cpcRecs[this.name].Hospital__c);
+                        $j('#hospitalName').val(cpcRecs[this.name].Hospital__r.Name);
+                        $j('#problem').val(cpcRecs[this.name].Problem__c);
+                        $j('#features').val(cpcRecs[this.name].Features__c);
+                        $j('#needsPayoff').val(cpcRecs[this.name].needsPayoff__c);
+                        $j('#implication').val(cpcRecs[this.name].Implication__c);
+                        $j('#advantages').val(cpcRecs[this.name].Advantages__c);
+                        $j('#region').val(cpcRecs[this.name].Region__c);
+                        $j('#situation').val(cpcRecs[this.name].Situation__c);
+                        $j('#managerComments').val(cpcRecs[this.name].ManagerComments__c);
+                        $j('#commitments').val(cpcRecs[this.name].Commitments__c);
+                        $j.mobile.changePage('#detailCpcPage', {changeHash: true});
+                    });
+                    newLi.append(newLink);            
+                    newLi.appendTo('#cList');
+                  });
+                $j.mobile.hidePageLoadingMsg();
+                $j('#cList').listview('refresh');
+            }
+            
+            function addUpdateCpc(e) {
+                e.preventDefault();
+                var cpcId= $j('#cpcId').val();
+                var cpcEntity = {opening__c: $j('#opening').val(),
+                        fojt__c: false,
+                        submit__c: false,
+                        sellingObjectives__c: $j('#sellingObjectives').val(),
+                        opening__c: $j('#opening').val(),
+                        visitDate__c: $j('#visitDate').val(),
+                        visitStatus__c: $j('#visitStatus').val(),
+                        benefits__c: $j('#benefits').val(),
+                        contact__c: $j('#contactId').val(),
+                        actualResults__c: $j('#actualResults').val(),
+                        problem__c: $j('#problem').val(),
+                        features__c: $j('#features').val(),
+                        needsPayoff__c: $j('#needsPayoff').val(),
+                        implication__c: $j('#implication').val(),
+                        advantages__c: $j('#advantages').val(),
+                        region__c: $j('#region').val(),
+                        situation__c: $j('#situation').val(),
+                        managerComments__c: $j('#managerComments').val(),
+                        commitments__c: $j('#commitments').val(),
+                        hospital__c: $j('#hospitalId').val()};
+                if (cpcId=== 'undefined' || cpcId=== ''){
+                    restAPIClient.create('CPC__c', cpcEntity, sucessCallback, displayError); 
+                } else {
+                    restAPIClient.update('CPC__c', cpcId, cpcEntity, sucessCallback, displayError); 
+                }
+            }
+            
+            function deleteCpc(e){
+                e.preventDefault();
+                restAPIClient.del('CPC__c', $j('#cpcId').val(), sucessCallback, displayError);
+            }
+            
+            function sucessCallback(e){
+                getAllCpc();
+                getAllContacts();
+                getAllHospitals();
+                $j.mobile.changePage('#listpage', {changeHash: true});
+            }
+        
+            function displayError(e){
+                var error = JSON.parse(e.responseText);
+                $j('#error').html(error[0].message);
+            }
+
+            function regBtnClickHandlers() {
+                $j('#add').click(function(e) {
+                    e.preventDefault();
+                    $j.mobile.showPageLoadingMsg();
+                    $j('#cpcName').val("");
+                    $j('#cpcId').val("");
+                    $j('#fojt').prop("checked", false);
+                    $j('#submit').prop("checked", false);
+                    $j('#opening').val("");
+                    $j('#sellingObjectives').val("");
+                    $j('#visitDate').val("");
+                    $j('#visitStatus').val("");
+                    $j('#actualResults').val();
+                    $j('#benefits').val("");
+                    $j('#contactId').val("");
+                    $j('#contactName').val("");
+                    $j('#problem').val("");
+                    $j('#features').val("");
+                    $j('#needsPayoff').val("");
+                    $j('#implication').val("");
+                    $j('#advantages').val("");
+                    $j('#region').val("");
+                    $j('#situation').val("");
+                    $j('#managerComments').val("");
+                    $j('#commitments').val("");
+                    $j('#hospitalName').val("");
+                    $j('#hospitalId').val("");
+                    $j.mobile.changePage('#detailCpcPage', {changeHash: true});
+                    $j.mobile.hidePageLoadingMsg();            
+                });
+                $j('#save').click(function(e) {
+                   addUpdateCpc(e);
+                });
+                $j('#delete').click(function(e) {
+                   deleteCpc(e);
+                });
+                $j("#lookupContact").click(function(e){
+                    e.preventDefault();
+                    $j.mobile.showPageLoadingMsg();
+                    $j.mobile.changePage('#listContactPage', {changeHash: true});
+                    $j.mobile.hidePageLoadingMsg();
+                });
+                $j("#lookupHospital").click(function(e){
+                    e.preventDefault();
+                    $j.mobile.showPageLoadingMsg();
+                    $j.mobile.changePage('#listHospitalPage', {changeHash: true});
+                    $j.mobile.hidePageLoadingMsg();
+                });
+            }
+            function getAllContacts(){
+                $j.mobile.showPageLoadingMsg();
+                var q = "select id, firstName, lastName, phone from Contact order by FirstName desc";
+                restAPIClient.query(q , 
+                            function(response) { 
+                                   showContacts(response.records); 
+                                }); 
+            }
+            function showContacts(records) {    
+                $j('#contactList').empty();
+                $j.each(records,
+                    function(index) {
+                    var newLi = $j('<li></li>');
+                    var newLink = $j('<a name="' +index+ '"data-icon="alert"  data-transition="flip">'+this.LastName + ', ' + this.FirstName+ '</a>');
+                    newLink.click(function(e) {
+                        e.preventDefault();
+                        $j.mobile.showPageLoadingMsg();
+                        $j("#contactName").val(records[this.name].LastName +" ," + records[this.name].FirstName);
+                        $j("#contactId").val(records[this.name].Id);
+                        $j('#error').html('');
+                       
+                        $j.mobile.changePage('#detailCpcPage', {changeHash: true});
+                    });                   
+                    newLi.append(newLink);
+                    newLi.appendTo('#contactList');
+                 });
+                $j.mobile.hidePageLoadingMsg();
+               // $j('#contactList').listview('refresh');
+            }
+            function getAllHospitals(){
+                $j.mobile.showPageLoadingMsg();
+                var q = "SELECT id,name from  Account";
+                restAPIClient.query(q , 
+                            function(response) { 
+                                   showHospitals(response.records); 
+                                }); 
+            }
+            function showHospitals(records) {
+                $j('#hospitalList').empty();
+                $j.each(records,
+                    function(index) {
+                    var newLi = $j('<li></li>');
+                    var newLink = $j('<a name="' +index+ '"data-icon="alert"  data-transition="flip">'+ this.Name+ '</a>');
+                    newLink.click(function(e) {
+                        e.preventDefault();
+                        $j.mobile.showPageLoadingMsg();
+                        $j("#hospitalName").val(records[this.name].Name);
+                        $j("#hospitalId").val(records[this.name].Id);
+                        $j('#error').html('');
+                        $j.mobile.changePage('#detailCpcPage', {changeHash: true});
+                    });                   
+                    newLi.append(newLink);
+                    newLi.appendTo('#hospitalList');
+                 });
+                $j.mobile.hidePageLoadingMsg();
+               // $j('#hospitalList').listview('refresh');
+            } 
+        </script>
+    </head>
+<body>
+<div data-role="page" data-theme="b" id="listpage">                
+    <div data-role="header" data-position="fixed">
+        <h2>CPC</h2>
+        <a href='#' id="add" class='ui-btn-right' data-icon='add' data-theme="b">Add</a>
+    </div>
+    <div data-role="content">            
+        <ul id="cList" data-filter="true" data-inset="true" data-role="listview" 
+            data-theme="c" data-dividertheme="b">
+        </ul>
+    </div>
+</div>
+<div data-role="page" id="detailCpcPage">
+    <div data-role="header" data-position="fixed">
+        <a href='#listpage' class='ui-btn-left' data-icon='arrow-l' data-direction="reverse" data-transition="flip">Back</a>
+        <h1>CPC Details</h1>
+    </div>
+    <div class="ui-bar ui-bar-c">
+      <label for="contact">Contact:</label>
+      <input type="text" name="contactName" id="contactName" disabled="disabled"/>
+      <input type="hidden" name="contactId" id="contactId"/>
+      <a href='#' id="lookupContact" class="ui-btn-right" data-icon="gear" data-theme="b"></a>
+    </div>
+    <div class="ui-bar ui-bar-c">
+      <label for="contact">Hospital:</label>
+      <input type="text" name="hospitalName" id="hospitalName" disabled="disabled"/>
+      <input type="hidden" name="hospitalId" id="hospitalId"/>
+      <a href='#' id="lookupHospital" class="ui-btn-right" data-icon="gear" data-theme="b"></a>
+    </div>
+    <div data-role="fieldcontain">
+       <label for="visitDate">visit Date: </label>
+       <input id="visitDate" name="visitDate" />
+       <label for="visitStatus" class="select">Status:</label>
+       <select name="visitStatus" id="visitStatus" data-native-menu="false">
+          <option value="Preparation">Preparation</option>
+          <option value="Completed">Completed</option>
+       </select>
+    </div> 
+    <div data-role="navbar">
+        <ul>
+            <li>
+                <div data-role="fieldcontain">
+                    <fieldset data-role="controlgroup">
+                       <input type="checkbox" name="fojt" id="fojt" class="custom" />
+                       <label for="fojt">FOJT</label>
+                    </fieldset>
+                </div>
+            </li>
+            <li>
+                <div data-role="fieldcontain">
+                    <fieldset data-role="controlgroup">
+                       <input type="checkbox" name="submit" id="submit" class="custom" />
+                       <label for="submit">Submit</label>
+                    </fieldset>
+                </div>
+            </li>
+        </ul>
+    </div>
+    <div data-role="collapsible" data-collapsed="false">
+       <h3>Objectives</h3>
+       <label for="sellingObjectives">Selling Ojectives: </label>
+       <textarea name="sellingObjectives" id="sellingObjectives"></textarea>
+    </div>
+    <div data-role="collapsible" data-collapsed="false">
+       <h3>Opening</h3>
+       <label for="opening">Opening: </label>
+       <textarea name="opening" id="opening"></textarea>
+    </div>
+    <div data-role="collapsible" data-collapsed="false">
+       <h3>Questions</h3>
+       <label for="situation">Situotion: </label>
+       <textarea name="situation" id="situation"></textarea>
+       <label for="problem">Problem: </label>
+       <textarea name="problem" id="problem"></textarea>
+       <label for="implication">Implication: </label>
+       <textarea name="implication" id="implication"></textarea>
+       <label for="needsPayoff">Needs Payoff: </label>
+       <textarea name="needsPayoff" id="needsPayoff"></textarea>
+    </div>
+    <div data-role="collapsible" data-collapsed="false">
+       <h3>FAB</h3>
+       <label for="features">Features: </label>
+       <textarea name="features" id="features"></textarea>
+       <label for="advantages">Advantages: </label>
+       <textarea name="advantages" id="advantages"></textarea>
+       <label for="benefits">Benefits: </label>
+       <textarea name="benefits" id="benefits"></textarea>
+    </div>
+    <div data-role="collapsible" data-collapsed="false">
+       <h3>Commitments</h3>
+       <label for="commitments">Commitments: </label>
+       <textarea name="commitments" id="commitments"></textarea>
+    </div>
+    <h2 style="color:red" id="error"></h2><br/>
+    <input type="hidden" id="Name" />
+    <input type="hidden" id="cpcId" />
+    <div data-role="navbar">
+        <ul>
+            <li>
+                <div class="ui-block-b">         
+                    <button type="button" data-theme="b" id="save" name="save" value="save"/>
+                </div>
+            </li>
+            <li>
+                <div class="ui-block-b">
+                    <button type="button" data-theme="b" id="delete" name="delete" value="delete"/>
+                </div>
+            </li>
+        </ul>
+    </div>
+    
+</div>
+
+<div data-role="page" data-theme="b" id="listContactPage">                
+    <div data-role="header" data-position="fixed">
+         <a href='#detailCpcPage' class='ui-btn-left' data-icon='back' data-direction="reverse" data-transition="flip">Back</a>
+         <h2>Contacts</h2>
+         <!--<a href='#' id="addContact" class='ui-btn-right' data-icon='add' data-theme="b">Add</a> -->
+    </div>
+    <div data-role="content" >            
+        <ul id="contactList" data-filter="true" data-inset="true" data-role="listview" 
+            data-theme="c" data-dividertheme="b">
+        </ul>
+    </div>
+</div>
+
+<div data-role="page" data-theme="b" id="listHospitalPage">                
+    <div data-role="header" data-position="fixed">
+         <a href='#detailCpcPage' class='ui-btn-left' data-icon='back' data-direction="reverse" data-transition="flip">Back</a>
+         <h2>Hospital</h2>
+         <!--<a href='#' id="addContact" class='ui-btn-right' data-icon='add' data-theme="b">Add</a> -->
+    </div>
+    <div data-role="content" >            
+        <ul id="hospitalList" data-filter="true" data-inset="true" data-role="listview" 
+            data-theme="c" data-dividertheme="b">
+        </ul>
+    </div>
+</div>
+</body>
+</apex:page>
