@@ -23,6 +23,6 @@
 private class MyTest {
 
     static testMethod void myUnitTest() {
-        // TO DO: implement unit test
+        
     }
 }
